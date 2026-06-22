@@ -1286,6 +1286,51 @@ $(function() {
             };  
 
             // ============================================================
+            // FUNCIÓN PARA ACTUALIZAR SOLO LOS MARCADORES SIN RECENTRAR
+            // ============================================================
+            
+            function updateMarkersOnly() {
+                const mostrarAsociados = document.getElementById('map-mostrar-asociados').checked;
+                let rows = tabla.rows({search:'applied'}).data().toArray();
+            
+                if (!mostrarAsociados) {
+                    rows = rows.filter(provider => !provider.NroPrestador.includes('-'));
+                }
+            
+                // Limpiar marcadores anteriores SIN tocar el mapa
+                if (generalMarkersLayer) {
+                    generalMap.removeLayer(generalMarkersLayer);
+                }
+                generalMarkersLayer = L.layerGroup().addTo(generalMap);
+            
+                // Agregar solo los marcadores filtrados
+                for (const provider of rows) {
+                    const lat = provider.lat;
+                    const lon = provider.lon;
+            
+                    if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
+                        continue;
+                    }
+            
+                    const color = getColorByClasificacion(provider.Clasificacion);
+                    const icon = createColoredIcon(color);
+            
+                    const popupHtml = `
+                        <strong>${provider.Nombre || ''}</strong><br>
+                        NroPrestador: ${provider.NroPrestador || 'N/A'}<br>
+                        Clasificación: ${provider.Clasificacion || 'N/A'}<br>
+                        Seccional: ${provider.Seccional || 'N/A'}<br>
+                        Localidad: ${provider.Localidad || 'N/A'}<br>
+                        Domicilio: ${provider.Domicilio || 'N/A'}<br>
+                        Teléfono: ${provider.Telefono || 'N/A'}
+                    `;
+            
+                    const marker = L.marker([lat, lon], { icon }).bindPopup(popupHtml);
+                    marker.addTo(generalMarkersLayer);
+                }
+            }
+
+            // ============================================================
             // MAPA GENERAL
             // ============================================================
             const mapModal = document.getElementById('map-modal');
@@ -1383,7 +1428,7 @@ $(function() {
 
             document.addEventListener('change', function(e) {
                 if (e.target.id === 'map-mostrar-asociados' && generalMap) {
-                    buildGeneralMap();
+                   updateMarkersOnly();
                 }
             });
 
