@@ -803,71 +803,90 @@ $(function() {
     // CARGAR CSV Y PROCESAR DATOS
     // ============================================================
     Papa.parse("Data_geocoded.csv", {  
-        download: true,  
-        header: true,  
-        delimiter: ";",  
-        complete: function(results) {  
+    download: true,  
+    header: true,  
+    delimiter: ";",  
+    complete: function(results) {  
 
-            datosFiltrados = results.data.filter(row => {
-                return row.CUIT && row.CUIT.trim() !== "" &&
-                    !(row['Clasificacion prestador'] === 'Clinicas y Sanatorios' &&
-                        row['Tipo de prestador'] === 'DiagnosticoyTratamiento');
-            });
+        datosFiltrados = results.data.filter(row => {
+            return row.CUIT && row.CUIT.trim() !== "" &&
+                !(row['Clasificacion prestador'] === 'Clinicas y Sanatorios' &&
+                    row['Tipo de prestador'] === 'DiagnosticoyTratamiento');
+        });
 
-            const providersMap = {};  
-            const uniquePlans = new Set();  
+        // ✅ CORREGIDO: Usar NroPrestador + Sucursal como clave
+        const providersMap = {};  
+        const uniquePlans = new Set();  
 
-            datosFiltrados.forEach(row => {  
-                const key = `${row.CUIT}-${row.Domicilio}`;  
-                if (!providersMap[key]) {  
-                    providersMap[key] = {  
-                        CUIT: row.CUIT,  
-                        Nombre: row.Nombre,  
-                        NroPrestador: row.NroPrestador,  
-                        Seccional: row.Seccional,  
-                        Provincia: row.Provincia,  
-                        Partido: row.Partido,  
-                        Localidad: row.Localidad,  
-                        Domicilio: row.Domicilio,  
-                        Telefono: row.Telefono,  
-                        Clasificacion: row['Clasificacion prestador'],  
-                        Plan: new Set(),  
-                        practices: [],
-                        lat: row.lat ? parseFloat(String(row.lat).replace(",", ".")) : null,
-                        lon: row.lon ? parseFloat(String(row.lon).replace(",", ".")) : null
-                    };  
-                    if (row['Clasificacion prestador']) {  
-                        uniqueClasificaciones.add(row['Clasificacion prestador']);  
-                    }  
+        datosFiltrados.forEach(row => {  
+            // ✅ LA CLAVE AHORA ES NroPrestador + Sucursal
+            // Esto permite que el mismo prestador con diferentes sucursales sea un registro distinto
+            const key = `${row.NroPrestador}-${row.Sucursal}`;  
+            
+            if (!providersMap[key]) {  
+                providersMap[key] = {  
+                    CUIT: row.CUIT,  
+                    Nombre: row.Nombre,  
+                    NroPrestador: row.NroPrestador,  
+                    Sucursal: row.Sucursal,  // ✅ Guardar sucursal
+                    Seccional: row.Seccional,  
+                    Provincia: row.Provincia,  
+                    Partido: row.Partido,  
+                    Localidad: row.Localidad,  
+                    Domicilio: row.Domicilio,  
+                    Telefono: row.Telefono,  
+                    Clasificacion: row['Clasificacion prestador'],  
+                    Plan: new Set(),  
+                    practices: new Set(), // ✅ Usar Set para evitar duplicados automáticamente
+                    lat: row.lat ? parseFloat(String(row.lat).replace(",", ".")) : null,
+                    lon: row.lon ? parseFloat(String(row.lon).replace(",", ".")) : null
+                };  
+                if (row['Clasificacion prestador']) {  
+                    uniqueClasificaciones.add(row['Clasificacion prestador']);  
                 }  
-                if (row.Plan) {  
-                    providersMap[key].Plan.add(row.Plan);  
-                    uniquePlans.add(row.Plan);  
-                }  
-                providersMap[key].practices.push({  
-                    tipo: row['Tipo de prestador'],  
-                    especialidad: row['Especialidad']  
-                });  
-            });  
+            }  
+            
+            if (row.Plan) {  
+                providersMap[key].Plan.add(row.Plan);  
+                uniquePlans.add(row.Plan);  
+            }  
+            
+            // ✅ CORRECCIÓN: Usar Set con clave "tipo|especialidad" para deduplicar
+            if (row['Tipo de prestador'] && row['Especialidad']) {
+                const practiceKey = `${row['Tipo de prestador']}|${row['Especialidad']}`;
+                providersMap[key].practices.add(practiceKey);
+            }
+        });  
 
-            Object.keys(providersMap).forEach(key => {  
-                const planStr = Array.from(providersMap[key].Plan).join(', ');  
-                providersMap[key].Plan = planStr;  
-            });  
-            providersCompact = Object.values(providersMap);  
+        // ✅ Convertir Plan Set a String
+        Object.keys(providersMap).forEach(key => {  
+            const planStr = Array.from(providersMap[key].Plan).join(', ');  
+            providersMap[key].Plan = planStr;
+            
+            // ✅ Convertir practices Set a Array de objetos ordenado
+            providersMap[key].practices = Array.from(providersMap[key].practices)
+                .map(p => {
+                    const [tipo, especialidad] = p.split('|');
+                    return { tipo, especialidad };
+                })
+                .sort((a, b) => a.tipo.localeCompare(b.tipo) || a.especialidad.localeCompare(b.especialidad));
+        });  
+        
+        providersCompact = Object.values(providersMap);  
 
-            providersCompact.sort((a, b) => {  
-                const aIsUniversal = a.Plan.includes('Universal');  
-                const bIsUniversal = b.Plan.includes('Universal');  
-                const aIsSuperador = a.Plan.includes('Superador');  
-                const bIsSuperador = b.Plan.includes('Superador');  
+        // Ordenar por plan (Universal primero) y luego por nombre
+        providersCompact.sort((a, b) => {  
+            const aIsUniversal = a.Plan.includes('Universal');  
+            const bIsUniversal = b.Plan.includes('Universal');  
+            const aIsSuperador = a.Plan.includes('Superador');  
+            const bIsSuperador = b.Plan.includes('Superador');  
 
-                if (aIsUniversal && !bIsUniversal) return -1;  
-                if (!aIsUniversal && bIsUniversal) return 1;  
-                if (aIsSuperador && !bIsSuperador) return 1;  
-                if (!aIsSuperador && bIsSuperador) return -1;  
-                return a.Nombre.localeCompare(b.Nombre);  
-            });  
+            if (aIsUniversal && !bIsUniversal) return -1;  
+            if (!aIsUniversal && bIsUniversal) return 1;  
+            if (aIsSuperador && !bIsSuperador) return 1;  
+            if (!aIsSuperador && bIsSuperador) return -1;  
+            return a.Nombre.localeCompare(b.Nombre);  
+        });  
 
             // ============================================================
             // RENDERIZAR CHECKBOXES DINÁMICAMENTE
