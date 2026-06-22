@@ -1087,45 +1087,57 @@ $(function() {
             });  
 
             // ============================================================
-            // DETALLES Y MAPA INDIVIDUAL
+            // DETALLES Y MAPA INDIVIDUAL (CORREGIDO)
             // ============================================================
             $('#tabla-prestadores tbody').on('click', 'button.details-control', function () {  
                 const tr = $(this).closest('tr');  
                 const row = tabla.row(tr);  
                 const rowData = row.data();  
-
+            
                 if (row.child.isShown()) {  
                     row.child.hide();  
                     tr.removeClass('shown');  
                     $(this).html('<i class="fas fa-info-circle"></i>'); 
                 } else {  
                     $(this).html('<i class="fas fa-minus-circle"></i>');  
+                    
+                    // CREAR ESTRUCTURA SIN DUPLICADOS
                     const practicesByType = {};  
-
+            
                     rowData.practices.forEach(practice => {  
+                        // Filtrar las prácticas que NO deben mostrarse
                         if(!(rowData.Clasificacion === 'Clinicas y Sanatorios' && practice.tipo === 'DiagnosticoyTratamiento')){  
+                            
+                            // Crear objeto por tipo si no existe
                             if (!practicesByType[practice.tipo]) {  
-                                practicesByType[practice.tipo] = [];  
+                                practicesByType[practice.tipo] = new Set(); // Usar Set para evitar duplicados
                             }  
-                            practicesByType[practice.tipo].push(practice.especialidad);   
+                            
+                            // Agregar especialidad al Set (automáticamente no hay duplicados)
+                            practicesByType[practice.tipo].add(practice.especialidad);   
                         }   
                     });  
-
+            
+                    // CONVERTIR SET A ARRAY Y ORDENAR
                     let practicesHtml = '<div class="practices-container">';  
-                    Object.keys(practicesByType).forEach(tipo => {  
+                    Object.keys(practicesByType).sort().forEach(tipo => {  
+                        const especialidades = Array.from(practicesByType[tipo]).sort(); // Convertir a array y ordenar alfabéticamente
+                        
                         practicesHtml += `  
                         <div class="practice-type-container">  
                             <div class="practice-type-title">${tipo}</div>  
                             <ul class="practice-list">`;  
-                        practicesByType[tipo].forEach(especialidad => {  
+                        
+                        especialidades.forEach(especialidad => {  
                             practicesHtml += `<li>${especialidad}</li>`;  
                         });  
+                        
                         practicesHtml += `  
                             </ul>  
                         </div>`;  
                     });  
                     practicesHtml += '</div>';  
-
+            
                     const mapId = `mapa-${(rowData.CUIT).replace(/\W/g,'')}-${(rowData.Domicilio).replace(/\W/g,'')}`;  
                     let detalleHtml = `  
                     <div class="details-child">  
@@ -1146,11 +1158,11 @@ $(function() {
                     </div>`;  
                     row.child(detalleHtml).show();  
                     tr.addClass('shown');  
-
+            
                     const hasCoords =
                         rowData.lat != null && rowData.lon != null &&
                         !isNaN(rowData.lat) && !isNaN(rowData.lon);
-
+            
                     if (hasCoords) {
                         const map = L.map(mapId).setView([rowData.lat, rowData.lon], 16);
                         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: 'OpenStreetMap'}).addTo(map);
@@ -1161,7 +1173,8 @@ $(function() {
                             "<div style='color:#b71c1c;padding:30px;text-align:center;'>Sin coordenadas (lat/lon) en Data_geocoded.csv.</div>";
                     }
                 }  
-            });  
+            });
+  
 
             // ============================================================
             // ESTADÍSTICAS
