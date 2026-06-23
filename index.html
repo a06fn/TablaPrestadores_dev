@@ -860,44 +860,15 @@
             return Object.values(locationMap);
         }
         
-        // ============================================================
-        // CREAR CONTENIDO DE POPUP CON PRÁCTICAS EXPANDIBLES
-        // ============================================================
-        
         function createPopupContent(providers) {
-            // Para un solo prestador
             if (providers.length === 1) {
                 const p = providers[0];
-                const practicesByType = {};
-                
-                p.practices.forEach(practice => {
-                    if (!practicesByType[practice.tipo]) {
-                        practicesByType[practice.tipo] = [];
-                    }
-                    practicesByType[practice.tipo].push(practice.especialidad);
-                });
-                
-                let practicesHtml = '';
-                Object.keys(practicesByType).sort().forEach(tipo => {
-                    const especialidades = practicesByType[tipo].sort();
-                    practicesHtml += `
-                        <div style="margin-bottom: 8px;">
-                            <div style="font-weight: bold; font-size: 11px; background: #e8e8e8; padding: 4px 6px; border-radius: 3px; margin-bottom: 3px;">
-                                ${tipo}
-                            </div>
-                            <ul style="margin: 0; padding-left: 14px; font-size: 11px; color: #555;">
-                                ${especialidades.map(esp => `<li style="margin: 2px 0;">${esp}</li>`).join('')}
-                            </ul>
-                        </div>
-                    `;
-                });
-                
                 return `
                     <div style="font-size: 12px; line-height: 1.6;">
                         <div style="font-weight: bold; color: #333; margin-bottom: 8px;">
                             ${p.Nombre || 'N/A'}
                         </div>
-                        <div style="border-top: 1px solid #eee; padding-top: 8px; font-size: 11px;">
+                        <div style="border-top: 1px solid #eee; padding-top: 8px;">
                             <div><strong>NroPrestador:</strong> ${p.NroPrestador || 'N/A'}</div>
                             <div><strong>Clasificación:</strong> ${p.Clasificacion || 'N/A'}</div>
                             <div><strong>Seccional:</strong> ${p.Seccional || 'N/A'}</div>
@@ -905,74 +876,29 @@
                             <div><strong>Domicilio:</strong> ${p.Domicilio || 'N/A'}</div>
                             <div><strong>Teléfono:</strong> ${p.Telefono || 'N/A'}</div>
                         </div>
-                        <div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 8px;">
-                            <div style="font-weight: bold; margin-bottom: 6px; font-size: 11px;">📋 Prácticas:</div>
-                            ${practicesHtml || '<div style="color: #999; font-size: 11px;">Sin prácticas registradas</div>'}
-                        </div>
                     </div>
                 `;
             }
             
-            // Para múltiples prestadores en la misma ubicación
             const providersList = providers
-                .map((p, index) => {
-                    const practicesByType = {};
-                    p.practices.forEach(practice => {
-                        if (!practicesByType[practice.tipo]) {
-                            practicesByType[practice.tipo] = [];
-                        }
-                        practicesByType[practice.tipo].push(practice.especialidad);
-                    });
-                    
-                    let practicesHtml = '';
-                    Object.keys(practicesByType).sort().forEach(tipo => {
-                        const especialidades = practicesByType[tipo].sort();
-                        practicesHtml += `
-                            <div style="margin-bottom: 6px;">
-                                <div style="font-weight: bold; font-size: 10px; background: #d8d8d8; padding: 2px 4px; border-radius: 2px; margin-bottom: 2px;">
-                                    ${tipo}
-                                </div>
-                                <ul style="margin: 0; padding-left: 12px; font-size: 10px;">
-                                    ${especialidades.map(esp => `<li style="margin: 1px 0;">${esp}</li>`).join('')}
-                                </ul>
-                            </div>
-                        `;
-                    });
-                    
-                    return `
-                        <div style="
-                            background: ${index % 2 === 0 ? '#f9f9f9' : '#ffffff'};
-                            padding: 10px;
-                            margin: 4px 0;
-                            border-radius: 4px;
-                            border-left: 4px solid ${getColorByClasificacion(p.Clasificacion)};
-                        ">
-                            <div style="font-weight: bold; color: #333; font-size: 12px; margin-bottom: 6px;">
-                                ${p.Nombre || 'N/A'}
-                            </div>
-                            <div style="font-size: 11px; color: #666; margin-bottom: 8px;">
-                                <div>NroPrestador: ${p.NroPrestador || 'N/A'}</div>
-                                <div>Clasificación: ${p.Clasificacion || 'N/A'}</div>
-                                <div>Teléfono: ${p.Telefono || 'N/A'}</div>
-                            </div>
-                            <button onclick="window.toggleProviderPractices('practices-${index}')" style="
-                                padding: 4px 8px;
-                                font-size: 11px;
-                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                                color: white;
-                                border: none;
-                                border-radius: 3px;
-                                cursor: pointer;
-                                width: 100%;
-                            ">
-                                📋 Ver Prácticas
-                            </button>
-                            <div id="practices-${index}" style="display: none; margin-top: 8px; padding: 8px; background: #f0f0f0; border-radius: 3px;">
-                                ${practicesHtml || '<div style="color: #999; font-size: 11px;">Sin prácticas registradas</div>'}
-                            </div>
+                .map((p, index) => `
+                    <div style="
+                        background: ${index % 2 === 0 ? '#f9f9f9' : '#ffffff'};
+                        padding: 10px;
+                        margin: 4px 0;
+                        border-radius: 4px;
+                        border-left: 3px solid ${getColorByClasificacion(p.Clasificacion)};
+                    ">
+                        <div style="font-weight: bold; color: #333; font-size: 12px;">
+                            ${p.Nombre || 'N/A'}
                         </div>
-                    `;
-                })
+                        <div style="font-size: 11px; color: #666; margin-top: 4px;">
+                            <div>NroPrestador: ${p.NroPrestador || 'N/A'}</div>
+                            <div>Clasificación: ${p.Clasificacion || 'N/A'}</div>
+                            <div>Teléfono: ${p.Telefono || 'N/A'}</div>
+                        </div>
+                    </div>
+                `)
                 .join('');
             
             return `
@@ -989,7 +915,7 @@
                         ${providers.length} prestadores en esta ubicación
                     </div>
                     <div style="
-                        max-height: 450px;
+                        max-height: 300px;
                         overflow-y: auto;
                         font-size: 12px;
                     ">
@@ -999,17 +925,6 @@
             `;
         }
         
-        // Función global para expandir/contraer prácticas
-        window.toggleProviderPractices = function(elementId) {
-            const element = document.getElementById(elementId);
-            if (element) {
-                element.style.display = element.style.display === 'none' ? 'block' : 'none';
-            }
-        };
-
-        // ============================================================
-        // CREAR MARCADOR AGRUPADO (CON CONTADOR SI HAY MÁS DE UNO)
-        // ============================================================
         function createClusteredMarker(locationGroup, markerLayer) {
             const { lat, lon, providers } = locationGroup;
             const count = providers.length;
@@ -1017,11 +932,9 @@
             let markerIcon;
             
             if (count === 1) {
-                // Si solo hay uno, usa icono simple de color
                 const color = getColorByClasificacion(providers[0].Clasificacion);
                 markerIcon = createColoredIcon(color);
             } else {
-                // Si hay varios, muestra un círculo con el número
                 markerIcon = L.divIcon({
                     className: 'clustered-marker',
                     html: `<div style="
@@ -1053,7 +966,6 @@
             
             return marker;
         }
-
         
         // ============================================================
         // FUNCIONES PRINCIPALES DEL MAPA
@@ -1223,6 +1135,9 @@
         
                     function updateEspecialidadOptions() {
                         const selectedTipos = Array.from(document.querySelectorAll('input[data-filter="tipo"]:checked')).map(cb => cb.value);
+                        const selectedSeccionales = Array.from(document.querySelectorAll('input[data-filter="seccional"]:checked')).map(cb => cb.value);
+                        const selectedPlanes = Array.from(document.querySelectorAll('input[data-filter="plan"]:checked')).map(cb => cb.value);
+                        const selectedClasificaciones = Array.from(document.querySelectorAll('input[data-filter="clasificacion"]:checked')).map(cb => cb.value);
                         const especialidadContainer = document.getElementById('filtro-especialidad-list');
         
                         if (selectedTipos.length > 1) {
@@ -1230,33 +1145,48 @@
                             return;
                         }
         
-                        let allEspecialidades = [];
-        
-                        if (selectedTipos.length === 1) {
-                            const tipo = selectedTipos[0];
-                            
-                            // Obtener SOLO las especialidades que existen en los datos para este tipo
-                            const especialidadesEnDatos = new Set();
-                            providersCompact.forEach(provider => {
-                                provider.practices.forEach(practice => {
-                                    if (practice.tipo === tipo) {
-                                        especialidadesEnDatos.add(practice.especialidad);
-                                    }
-                                });
-                            });
-                            
-                            // Convertir a array y ordenar
-                            allEspecialidades = Array.from(especialidadesEnDatos).sort();
-                        }
-        
-                        especialidadContainer.innerHTML = '';
-        
-                        if (allEspecialidades.length === 0) {
+                        if (selectedTipos.length === 0) {
                             especialidadContainer.innerHTML = '<div style="color:#999;padding:8px;font-size:12px;">Selecciona un Tipo</div>';
                             return;
                         }
         
-                        allEspecialidades.forEach(esp => {
+                        const selectedTipo = selectedTipos[0];
+                        const especialidadesEnDatos = new Set();
+        
+                        // Buscar especialidades que existan en providers que cumplan con TODOS los filtros
+                        providersCompact.forEach(provider => {
+                            // Aplicar filtro de seccional
+                            if (selectedSeccionales.length > 0 && !selectedSeccionales.includes(provider.Seccional)) {
+                                return;
+                            }
+                            // Aplicar filtro de plan
+                            if (selectedPlanes.length > 0) {
+                                const hasMatchingPlan = selectedPlanes.some(plan => provider.Plan.includes(plan));
+                                if (!hasMatchingPlan) return;
+                            }
+                            // Aplicar filtro de clasificación
+                            if (selectedClasificaciones.length > 0 && !selectedClasificaciones.includes(provider.Clasificacion)) {
+                                return;
+                            }
+        
+                            // Buscar especialidades del tipo seleccionado
+                            provider.practices.forEach(practice => {
+                                if (practice.tipo === selectedTipo) {
+                                    especialidadesEnDatos.add(practice.especialidad);
+                                }
+                            });
+                        });
+        
+                        especialidadContainer.innerHTML = '';
+        
+                        if (especialidadesEnDatos.size === 0) {
+                            especialidadContainer.innerHTML = '<div style="color:#999;padding:8px;font-size:12px;">Sin especialidades en esta combinación</div>';
+                            return;
+                        }
+        
+                        const sortedEspecialidades = Array.from(especialidadesEnDatos).sort();
+        
+                        sortedEspecialidades.forEach(esp => {
                             const checkbox = document.createElement('div');
                             checkbox.className = 'checkbox-item';
                             checkbox.innerHTML = `
@@ -1266,7 +1196,8 @@
                             const input = checkbox.querySelector('input');
                             input.addEventListener('change', applyFilters);
                             especialidadContainer.appendChild(checkbox);
-                        });}
+                        });
+                    }
         
                     const tiposNoGuardia = Object.keys(tipoEspecialidad).filter(t => !t.includes('Guardia'));
                     const tiposGuardia = Object.keys(tipoEspecialidad).filter(t => t.includes('Guardia'));
@@ -1406,7 +1337,17 @@
                     document.getElementById('mostrar-asociados').addEventListener('change', applyFilters);
         
                     document.querySelectorAll('input[type="checkbox"][data-filter]').forEach(checkbox => {
-                        if (checkbox.dataset.filter !== 'tipo') {
+                        if (checkbox.dataset.filter === 'tipo') {
+                            checkbox.addEventListener('change', () => {
+                                updateEspecialidadOptions();
+                            });
+                        } else if (checkbox.dataset.filter === 'seccional' || checkbox.dataset.filter === 'plan' || checkbox.dataset.filter === 'clasificacion') {
+                            // Estos filtros deben actualizar las especialidades disponibles
+                            checkbox.addEventListener('change', () => {
+                                updateEspecialidadOptions();
+                                applyFilters();
+                            });
+                        } else {
                             checkbox.addEventListener('change', applyFilters);
                         }
                     });
@@ -1681,6 +1622,5 @@
             const dataObj = Object.fromEntries(formData.entries());
             sendEmail(dataObj);
         });
-    
     </script>
 </html>
