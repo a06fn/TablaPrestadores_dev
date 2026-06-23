@@ -1366,56 +1366,7 @@ $(function() {
             }
 
             function buildGeneralMap() {
-                const mostrarAsociados = document.getElementById('map-mostrar-asociados').checked;
-                let rows = tabla.rows({search:'applied'}).data().toArray();
-
-                if (!mostrarAsociados) {
-                    rows = rows.filter(provider => !provider.NroPrestador.includes('-'));
-                }
-
-                if (!generalMap) {
-                    generalMap = L.map('general-map').setView([-34.6, -58.4], 4);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: 'OpenStreetMap'
-                    }).addTo(generalMap);
-                }
-
-                if (generalMarkersLayer) {
-                    generalMap.removeLayer(generalMarkersLayer);
-                }
-                generalMarkersLayer = L.layerGroup().addTo(generalMap);
-
-                const bounds = [];
-
-                for (const provider of rows) {
-                    const lat = provider.lat;
-                    const lon = provider.lon;
-
-                    if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
-                        continue;
-                    }
-
-                    const color = getColorByClasificacion(provider.Clasificacion);
-                    const icon = createColoredIcon(color);
-
-                    const popupHtml = `
-                        <strong>${provider.Nombre || ''}</strong><br>
-                        NroPrestador: ${provider.NroPrestador || 'N/A'}<br>
-                        Clasificación: ${provider.Clasificacion || 'N/A'}<br>
-                        Seccional: ${provider.Seccional || 'N/A'}<br>
-                        Localidad: ${provider.Localidad || 'N/A'}<br>
-                        Domicilio: ${provider.Domicilio || 'N/A'}<br>
-                        Teléfono: ${provider.Telefono || 'N/A'}
-                    `;
-
-                    const marker = L.marker([lat, lon], { icon }).bindPopup(popupHtml);
-                    marker.addTo(generalMarkersLayer);
-                    bounds.push([lat, lon]);
-                }
-
-                if (bounds.length > 0) {
-                    generalMap.fitBounds(bounds, { padding: [20, 20] });
-                }
+                buildGeneralMapClustered();
             }
 
             mapBtn.onclick = function() {
@@ -1428,7 +1379,7 @@ $(function() {
 
             document.addEventListener('change', function(e) {
                 if (e.target.id === 'map-mostrar-asociados' && generalMap) {
-                   updateMarkersOnly();
+                   updateMarkersOnlyClustered();
                 }
             });
 
@@ -1497,5 +1448,222 @@ document.getElementById('contactForm').addEventListener('submit', function(e){
     const dataObj = Object.fromEntries(formData.entries());
     sendEmail(dataObj);
 });
+// ============================================================
+// FUNCIÓN PARA AGRUPAR PRESTADORES POR UBICACIÓN
+// ============================================================
+
+function groupProvidersByLocation(providers) {
+    const locationMap = {};
+    
+    providers.forEach(provider => {
+        const lat = provider.lat;
+        const lon = provider.lon;
+        
+        if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
+            return;
+        }
+        
+        // Redondear a 6 decimales para agrupar ubicaciones muy cercanas
+        const key = `${lat.toFixed(6)},${lon.toFixed(6)}`;
+        
+        if (!locationMap[key]) {
+            locationMap[key] = {
+                lat: lat,
+                lon: lon,
+                providers: []
+            };
+        }
+        
+        locationMap[key].providers.push(provider);
+    });
+    
+    return Object.values(locationMap);
+}
+
+// ============================================================
+// CREAR MARCADOR AGRUPADO (CON CONTADOR SI HAY MÁS DE UNO)
+// ============================================================
+
+function createClusteredMarker(locationGroup, map, markerLayer) {
+    const { lat, lon, providers } = locationGroup;
+    const count = providers.length;
+    
+    let markerIcon;
+    
+    if (count === 1) {
+        // Si solo hay uno, usa icono simple de color
+        const color = getColorByClasificacion(providers[0].Clasificacion);
+        markerIcon = createColoredIcon(color);
+    } else {
+        // Si hay varios, muestra un círculo con el número
+        markerIcon = L.divIcon({
+            className: 'clustered-marker',
+            html: `<div style="
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border: 3px solid #ffffff;
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: 16px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                cursor: pointer;
+                "><strong>${count}</strong></div>`,
+            iconSize: [40, 40],
+            iconAnchor: [20, 20],
+            popupAnchor: [0, -20]
+        });
+    }
+    
+    // Crear popup con contenido
+    const popupContent = createPopupContent(providers);
+    
+    const marker = L.marker([lat, lon], { icon: markerIcon })
+        .bindPopup(popupContent, { maxWidth: 350, maxHeight: 400 })
+        .addTo(markerLayer);
+    
+    return marker;
+}
+
+// ============================================================
+// CREAR CONTENIDO DE POPUP (LISTA EXPANDIBLE)
+// ============================================================
+
+function createPopupContent(providers) {
+    if (providers.length === 1) {
+        const p = providers[0];
+        return `
+            <div style="font-size: 12px; line-height: 1.6;">
+                <div style="font-weight: bold; color: #333; margin-bottom: 8px;">
+                    ${p.Nombre || 'N/A'}
+                </div>
+                <div style="border-top: 1px solid #eee; padding-top: 8px;">
+                    <div><strong>NroPrestador:</strong> ${p.NroPrestador || 'N/A'}</div>
+                    <div><strong>Clasificación:</strong> ${p.Clasificacion || 'N/A'}</div>
+                    <div><strong>Seccional:</strong> ${p.Seccional || 'N/A'}</div>
+                    <div><strong>Localidad:</strong> ${p.Localidad || 'N/A'}</div>
+                    <div><strong>Domicilio:</strong> ${p.Domicilio || 'N/A'}</div>
+                    <div><strong>Teléfono:</strong> ${p.Telefono || 'N/A'}</div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Para múltiples prestadores, crear lista expandible
+    const providersList = providers
+        .map((p, index) => `
+            <div style="
+                background: ${index % 2 === 0 ? '#f9f9f9' : '#ffffff'};
+                padding: 10px;
+                margin: 4px 0;
+                border-radius: 4px;
+                border-left: 3px solid ${getColorByClasificacion(p.Clasificacion)};
+            ">
+                <div style="font-weight: bold; color: #333; font-size: 12px;">
+                    ${p.Nombre || 'N/A'}
+                </div>
+                <div style="font-size: 11px; color: #666; margin-top: 4px;">
+                    <div>NroPrestador: ${p.NroPrestador || 'N/A'}</div>
+                    <div>Clasificación: ${p.Clasificacion || 'N/A'}</div>
+                    <div>Teléfono: ${p.Telefono || 'N/A'}</div>
+                </div>
+            </div>
+        `)
+        .join('');
+    
+    return `
+        <div style="max-width: 100%;">
+            <div style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 10px;
+                border-radius: 4px 4px 0 0;
+                margin: -12px -12px 8px -12px;
+                text-align: center;
+                font-weight: bold;
+            ">
+                ${providers.length} prestadores en esta ubicación
+            </div>
+            <div style="
+                max-height: 300px;
+                overflow-y: auto;
+                font-size: 12px;
+            ">
+                ${providersList}
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// ACTUALIZAR MAPA CON MARCADORES AGRUPADOS
+// ============================================================
+
+function buildGeneralMapClustered() {
+    const mostrarAsociados = document.getElementById('map-mostrar-asociados').checked;
+    let rows = tabla.rows({search:'applied'}).data().toArray();
+
+    if (!mostrarAsociados) {
+        rows = rows.filter(provider => !provider.NroPrestador.includes('-'));
+    }
+
+    if (!generalMap) {
+        generalMap = L.map('general-map').setView([-34.6, -58.4], 4);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: 'OpenStreetMap'
+        }).addTo(generalMap);
+    }
+
+    if (generalMarkersLayer) {
+        generalMap.removeLayer(generalMarkersLayer);
+    }
+    generalMarkersLayer = L.layerGroup().addTo(generalMap);
+
+    const bounds = [];
+    
+    // Agrupar prestadores por ubicación
+    const locationGroups = groupProvidersByLocation(rows);
+    
+    // Crear marcador para cada grupo
+    locationGroups.forEach(locationGroup => {
+        createClusteredMarker(locationGroup, generalMap, generalMarkersLayer);
+        bounds.push([locationGroup.lat, locationGroup.lon]);
+    });
+
+    if (bounds.length > 0) {
+        generalMap.fitBounds(bounds, { padding: [20, 20] });
+    }
+}
+
+// ============================================================
+// ACTUALIZAR SOLO LOS MARCADORES SIN RECENTRAR
+// ============================================================
+
+function updateMarkersOnlyClustered() {
+    const mostrarAsociados = document.getElementById('map-mostrar-asociados').checked;
+    let rows = tabla.rows({search:'applied'}).data().toArray();
+
+    if (!mostrarAsociados) {
+        rows = rows.filter(provider => !provider.NroPrestador.includes('-'));
+    }
+
+    // Limpiar marcadores anteriores SIN tocar el mapa
+    if (generalMarkersLayer) {
+        generalMap.removeLayer(generalMarkersLayer);
+    }
+    generalMarkersLayer = L.layerGroup().addTo(generalMap);
+
+    // Agrupar y crear marcadores
+    const locationGroups = groupProvidersByLocation(rows);
+    
+    locationGroups.forEach(locationGroup => {
+        createClusteredMarker(locationGroup, generalMap, generalMarkersLayer);
+    });
+}
+
 </script>
 </html>
