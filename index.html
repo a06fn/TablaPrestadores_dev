@@ -860,12 +860,63 @@
             return Object.values(locationMap);
         }
         
+        // ============================================================
+        // CREAR CONTENIDO DE POPUP CON PRÁCTICAS EXPANDIBLES
+        // ============================================================
+        
         function createPopupContent(providers) {
             // Para un solo prestador
-                if (providers.length === 1) {
-                    const p = providers[0];
+            if (providers.length === 1) {
+                const p = providers[0];
+                const practicesByType = {};
+                
+                p.practices.forEach(practice => {
+                    if (!practicesByType[practice.tipo]) {
+                        practicesByType[practice.tipo] = [];
+                    }
+                    practicesByType[practice.tipo].push(practice.especialidad);
+                });
+                
+                let practicesHtml = '';
+                Object.keys(practicesByType).sort().forEach(tipo => {
+                    const especialidades = practicesByType[tipo].sort();
+                    practicesHtml += `
+                        <div style="margin-bottom: 8px;">
+                            <div style="font-weight: bold; font-size: 11px; background: #e8e8e8; padding: 4px 6px; border-radius: 3px; margin-bottom: 3px;">
+                                ${tipo}
+                            </div>
+                            <ul style="margin: 0; padding-left: 14px; font-size: 11px; color: #555;">
+                                ${especialidades.map(esp => `<li style="margin: 2px 0;">${esp}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                });
+                
+                return `
+                    <div style="font-size: 12px; line-height: 1.6;">
+                        <div style="font-weight: bold; color: #333; margin-bottom: 8px;">
+                            ${p.Nombre || 'N/A'}
+                        </div>
+                        <div style="border-top: 1px solid #eee; padding-top: 8px; font-size: 11px;">
+                            <div><strong>NroPrestador:</strong> ${p.NroPrestador || 'N/A'}</div>
+                            <div><strong>Clasificación:</strong> ${p.Clasificacion || 'N/A'}</div>
+                            <div><strong>Seccional:</strong> ${p.Seccional || 'N/A'}</div>
+                            <div><strong>Localidad:</strong> ${p.Localidad || 'N/A'}</div>
+                            <div><strong>Domicilio:</strong> ${p.Domicilio || 'N/A'}</div>
+                            <div><strong>Teléfono:</strong> ${p.Telefono || 'N/A'}</div>
+                        </div>
+                        <div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 8px;">
+                            <div style="font-weight: bold; margin-bottom: 6px; font-size: 11px;">📋 Prácticas:</div>
+                            ${practicesHtml || '<div style="color: #999; font-size: 11px;">Sin prácticas registradas</div>'}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Para múltiples prestadores en la misma ubicación
+            const providersList = providers
+                .map((p, index) => {
                     const practicesByType = {};
-                    
                     p.practices.forEach(practice => {
                         if (!practicesByType[practice.tipo]) {
                             practicesByType[practice.tipo] = [];
@@ -877,130 +928,84 @@
                     Object.keys(practicesByType).sort().forEach(tipo => {
                         const especialidades = practicesByType[tipo].sort();
                         practicesHtml += `
-                            <div style="margin-bottom: 8px;">
-                                <div style="font-weight: bold; font-size: 11px; background: #e8e8e8; padding: 4px 6px; border-radius: 3px; margin-bottom: 3px;">
+                            <div style="margin-bottom: 6px;">
+                                <div style="font-weight: bold; font-size: 10px; background: #d8d8d8; padding: 2px 4px; border-radius: 2px; margin-bottom: 2px;">
                                     ${tipo}
                                 </div>
-                                <ul style="margin: 0; padding-left: 14px; font-size: 11px; color: #555;">
-                                    ${especialidades.map(esp => `<li style="margin: 2px 0;">${esp}</li>`).join('')}
+                                <ul style="margin: 0; padding-left: 12px; font-size: 10px;">
+                                    ${especialidades.map(esp => `<li style="margin: 1px 0;">${esp}</li>`).join('')}
                                 </ul>
                             </div>
                         `;
                     });
                     
                     return `
-                        <div style="font-size: 12px; line-height: 1.6;">
-                            <div style="font-weight: bold; color: #333; margin-bottom: 8px;">
+                        <div style="
+                            background: ${index % 2 === 0 ? '#f9f9f9' : '#ffffff'};
+                            padding: 10px;
+                            margin: 4px 0;
+                            border-radius: 4px;
+                            border-left: 4px solid ${getColorByClasificacion(p.Clasificacion)};
+                        ">
+                            <div style="font-weight: bold; color: #333; font-size: 12px; margin-bottom: 6px;">
                                 ${p.Nombre || 'N/A'}
                             </div>
-                            <div style="border-top: 1px solid #eee; padding-top: 8px; font-size: 11px;">
-                                <div><strong>NroPrestador:</strong> ${p.NroPrestador || 'N/A'}</div>
-                                <div><strong>Clasificación:</strong> ${p.Clasificacion || 'N/A'}</div>
-                                <div><strong>Seccional:</strong> ${p.Seccional || 'N/A'}</div>
-                                <div><strong>Localidad:</strong> ${p.Localidad || 'N/A'}</div>
-                                <div><strong>Domicilio:</strong> ${p.Domicilio || 'N/A'}</div>
-                                <div><strong>Teléfono:</strong> ${p.Telefono || 'N/A'}</div>
+                            <div style="font-size: 11px; color: #666; margin-bottom: 8px;">
+                                <div>NroPrestador: ${p.NroPrestador || 'N/A'}</div>
+                                <div>Clasificación: ${p.Clasificacion || 'N/A'}</div>
+                                <div>Teléfono: ${p.Telefono || 'N/A'}</div>
                             </div>
-                            <div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 8px;">
-                                <div style="font-weight: bold; margin-bottom: 6px; font-size: 11px;">📋 Prácticas:</div>
+                            <button onclick="window.toggleProviderPractices('practices-${index}')" style="
+                                padding: 4px 8px;
+                                font-size: 11px;
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                color: white;
+                                border: none;
+                                border-radius: 3px;
+                                cursor: pointer;
+                                width: 100%;
+                            ">
+                                📋 Ver Prácticas
+                            </button>
+                            <div id="practices-${index}" style="display: none; margin-top: 8px; padding: 8px; background: #f0f0f0; border-radius: 3px;">
                                 ${practicesHtml || '<div style="color: #999; font-size: 11px;">Sin prácticas registradas</div>'}
                             </div>
                         </div>
                     `;
-                }
-                
-                // Para múltiples prestadores en la misma ubicación
-                const providersList = providers
-                    .map((p, index) => {
-                        const practicesByType = {};
-                        p.practices.forEach(practice => {
-                            if (!practicesByType[practice.tipo]) {
-                                practicesByType[practice.tipo] = [];
-                            }
-                            practicesByType[practice.tipo].push(practice.especialidad);
-                        });
-                        
-                        let practicesHtml = '';
-                        Object.keys(practicesByType).sort().forEach(tipo => {
-                            const especialidades = practicesByType[tipo].sort();
-                            practicesHtml += `
-                                <div style="margin-bottom: 6px;">
-                                    <div style="font-weight: bold; font-size: 10px; background: #d8d8d8; padding: 2px 4px; border-radius: 2px; margin-bottom: 2px;">
-                                        ${tipo}
-                                    </div>
-                                    <ul style="margin: 0; padding-left: 12px; font-size: 10px;">
-                                        ${especialidades.map(esp => `<li style="margin: 1px 0;">${esp}</li>`).join('')}
-                                    </ul>
-                                </div>
-                            `;
-                        });
-                        
-                        return `
-                            <div style="
-                                background: ${index % 2 === 0 ? '#f9f9f9' : '#ffffff'};
-                                padding: 10px;
-                                margin: 4px 0;
-                                border-radius: 4px;
-                                border-left: 4px solid ${getColorByClasificacion(p.Clasificacion)};
-                            ">
-                                <div style="font-weight: bold; color: #333; font-size: 12px; margin-bottom: 6px;">
-                                    ${p.Nombre || 'N/A'}
-                                </div>
-                                <div style="font-size: 11px; color: #666; margin-bottom: 8px;">
-                                    <div>NroPrestador: ${p.NroPrestador || 'N/A'}</div>
-                                    <div>Clasificación: ${p.Clasificacion || 'N/A'}</div>
-                                    <div>Teléfono: ${p.Telefono || 'N/A'}</div>
-                                </div>
-                                <button onclick="window.toggleProviderPractices('practices-${index}')" style="
-                                    padding: 4px 8px;
-                                    font-size: 11px;
-                                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                                    color: white;
-                                    border: none;
-                                    border-radius: 3px;
-                                    cursor: pointer;
-                                    width: 100%;
-                                ">
-                                    📋 Ver Prácticas
-                                </button>
-                                <div id="practices-${index}" style="display: none; margin-top: 8px; padding: 8px; background: #f0f0f0; border-radius: 3px;">
-                                    ${practicesHtml || '<div style="color: #999; font-size: 11px;">Sin prácticas registradas</div>'}
-                                </div>
-                            </div>
-                        `;
-                    })
-                    .join('');
-                
-                return `
-                    <div style="max-width: 100%;">
-                        <div style="
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            color: white;
-                            padding: 10px;
-                            border-radius: 4px 4px 0 0;
-                            margin: -12px -12px 8px -12px;
-                            text-align: center;
-                            font-weight: bold;
-                        ">
-                            ${providers.length} prestadores en esta ubicación
-                        </div>
-                        <div style="
-                            max-height: 450px;
-                            overflow-y: auto;
-                            font-size: 12px;
-                        ">
-                            ${providersList}
-                        </div>
-                    </div>
-                `;
-            }
+                })
+                .join('');
             
-            // Función global para expandir/contraer prácticas
-            window.toggleProviderPractices = function(elementId) {
-                const element = document.getElementById(elementId);
-                if (element) {
-                    element.style.display = element.style.display === 'none' ? 'block' : 'none';
+            return `
+                <div style="max-width: 100%;">
+                    <div style="
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        padding: 10px;
+                        border-radius: 4px 4px 0 0;
+                        margin: -12px -12px 8px -12px;
+                        text-align: center;
+                        font-weight: bold;
+                    ">
+                        ${providers.length} prestadores en esta ubicación
+                    </div>
+                    <div style="
+                        max-height: 450px;
+                        overflow-y: auto;
+                        font-size: 12px;
+                    ">
+                        ${providersList}
+                    </div>
+                </div>
+            `;
         }
+        
+        // Función global para expandir/contraer prácticas
+        window.toggleProviderPractices = function(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.style.display = element.style.display === 'none' ? 'block' : 'none';
+            }
+        };
         
         // ============================================================
         // FUNCIONES PRINCIPALES DEL MAPA
