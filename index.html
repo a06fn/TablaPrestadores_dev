@@ -1234,9 +1234,19 @@
         
                         if (selectedTipos.length === 1) {
                             const tipo = selectedTipos[0];
-                            if (tipoEspecialidad[tipo]) {
-                                allEspecialidades = Array.from(tipoEspecialidad[tipo]).sort();
-                            }
+                            
+                            // Obtener SOLO las especialidades que existen en los datos para este tipo
+                            const especialidadesEnDatos = new Set();
+                            providersCompact.forEach(provider => {
+                                provider.practices.forEach(practice => {
+                                    if (practice.tipo === tipo) {
+                                        especialidadesEnDatos.add(practice.especialidad);
+                                    }
+                                });
+                            });
+                            
+                            // Convertir a array y ordenar
+                            allEspecialidades = Array.from(especialidadesEnDatos).sort();
                         }
         
                         especialidadContainer.innerHTML = '';
@@ -1256,8 +1266,7 @@
                             const input = checkbox.querySelector('input');
                             input.addEventListener('change', applyFilters);
                             especialidadContainer.appendChild(checkbox);
-                        });
-                    }
+                        });}
         
                     const tiposNoGuardia = Object.keys(tipoEspecialidad).filter(t => !t.includes('Guardia'));
                     const tiposGuardia = Object.keys(tipoEspecialidad).filter(t => t.includes('Guardia'));
