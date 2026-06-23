@@ -745,13 +745,18 @@
     </div>
 
     <script>
+
         // ============================================================
-        // MODO OSCURO
+        // 1. MODO OSCURO - TOGGLE DARK/LIGHT MODE
         // ============================================================
+        // Obtiene el botón de toggle y el body del HTML
         const themeToggle = document.getElementById('theme-toggle');
         const body = document.body;
+        
+        // Lee el tema guardado en localStorage, por defecto 'light'
         const currentTheme = localStorage.getItem('theme') || 'light';
         
+        // Aplica el tema guardado al cargar la página
         if (currentTheme === 'dark') {
             body.classList.add('dark-mode');
             themeToggle.innerHTML = '🌙';
@@ -759,19 +764,27 @@
             themeToggle.innerHTML = '☀️';
         }
         
+        // Variables globales para los gráficos (se inicializan cuando se usen)
         let tabla;
         let seccionalChart, planChart, clasificacionChart;
         
+        // Evento del botón toggle para cambiar tema
         themeToggle.addEventListener('click', () => {
             body.classList.toggle('dark-mode');
             const isDark = body.classList.contains('dark-mode');
+            
+            // Cambia el icono del toggle
             themeToggle.innerHTML = isDark ? '🌙' : '☀️';
+            
+            // Guarda la preferencia en localStorage
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
         
+            // Actualiza los gráficos de estadísticas si existen
             if (seccionalChart) seccionalChart.update();
             if (planChart) planChart.update();
             if (clasificacionChart) clasificacionChart.update();
         
+            // Colapsa todos los detalles abiertos en la tabla cuando cambia el tema
             if (tabla) {
                 tabla.rows().every(function() {
                     if (this.child.isShown()) {
@@ -783,8 +796,9 @@
         });
         
         // ============================================================
-        // CÓDIGO PRINCIPAL
+        // 2. DEFINICIÓN DE DATOS FIJOS
         // ============================================================
+        // Mapeo de tipos de prestación con sus especialidades disponibles
         const tipoEspecialidad = {  
             "GuardiaActiva": ["Cardiologica","Clinica","Gastroenterologia","Ginecologica","Obstetrica","Odontologica","Oftalmologica","Otorrinolaringologia","Pediatrica","Por Electrocucion","Por envenenamiento","Por intoxicacion","Por mordedura de animales","Psiquiatrica","Quemados","Quirurgica","Traumatologica"],  
             "GuardiaPasiva": ["Cardiologica","Clinica","Gastroenterologia","Ginecologica","Obstetrica","Odontologica","Oftalmologica","Otorrinolaringologia","Pediatrica","Psiquiatrica","Quemados","Quirurgica","Traumatologica"],  
@@ -793,31 +807,35 @@
             "Cirugias": ["Artroscopica","Cabeza y Cuello","Cardiaca","Cardiaca Infantil","Endoscopica","General","Ginecologia","Infantil","Laparoscopica","Miembro Superior y Mano","Nariz y oido","Neurocirugia","Oftalmologica","Pierna y Pie","Plastica Reparadora","Toracica","Traumatologica","Urologia","Vascular Periferica"],  
             "DiagnosticoyTratamiento": ["Anatomia Patologia","Audiometria","Camara Gamma - Medicina Nuclear - Radioisotopos","Campo visual computarizado","Colposcopia","Densitometria Osea","Drenaje Linfatico","Eco Estres","Eco-Doppler","Ecografia","Ecografia 4D/5D","Ecografia Infantil","Ecografia TN","Electrocardiograma","Electroencefalograma","Electromiograma","Endoscopia Digestiva","Endoscopia Ginecologica","Endoscopia Respiratoria","Endoscopia Urologica","Ergometria","Espinograma","Espirometria","Espirometria Infantil","Estudios Cardiologicos","Estudios Gastroenterologicos","Estudios Ginecologicos","Estudios Mamarios","Estudios Oftalmologicos","Holter","Infiltraciones","Laboratorio","Mapeo Cerebral","Monitoreo Fetal","PET","Polisomnografia","Potenciales Evocados","Presurometria","Psicoprofilaxis del parto","Puncion Mamaria","Puncion Tiroide","Quimioterapia","Radiologia","Radiologia Infantil","Radioterapia","Rehabilitacion Neurologica","Rehabilitacion Vestibular","Resonador abierto","Resonancia Magnetica Nuclear","RPG","Tomografia Computada","Tomografo abierto","Urodinamia","Urodinamia Infantil"]  
         };  
+        
+        // Lista de todas las seccionales (regiones/provincias)
         const seccionales = ["BAHIA BLANCA","BUENOS AIRES ZONA 1","BUENOS AIRES ZONA 2","BUENOS AIRES ZONA 3","CAPITAL","CATAMARCA","CHACO","CHUBUT","CORDOBA","CORRIENTES","ENTRE RIOS","FORMOSA","GBA NOROESTE","GBA NORTE","GBA OESTE","GBA SUR","JUJUY","LA PAMPA","LA PLATA","LA RIOJA","MAR DEL PLATA","MENDOZA","MISIONES","NEUQUEN","RIO NEGRO","ROSARIO","SALTA","SAN JUAN","SAN LUIS","SANTA CRUZ","SANTA FE","SANTIAGO DEL ESTERO","TIERRA DEL FUEGO","TRENQUE LAUQUEN","TUCUMAN"];  
         
         // ============================================================
-        // VARIABLES GLOBALES DEL MAPA
+        // 3. VARIABLES GLOBALES DEL MAPA
         // ============================================================
-        let generalMap = null;
-        let generalMarkersLayer = null;
+        let generalMap = null;           // La instancia del mapa (Leaflet)
+        let generalMarkersLayer = null;  // Capa con los marcadores del mapa
         
         // ============================================================
-        // FUNCIONES DE COLOR Y ICONOS
+        // 4. FUNCIONES DE COLOR E ICONOS
         // ============================================================
+        // Retorna un color según la clasificación del prestador
         function getColorByClasificacion(clasif) {
             if (!clasif) return '#666666';
             const c = clasif.toLowerCase();
-            if (c.includes('clinicas') || c.includes('sanatorio')) return '#E74C3C';
-            if (c.includes('asociacion')) return '#99cfc6';
-            if (c.includes('rehabil')) return '#27AE60';
-            if (c.includes('centr')) return '#F1C40F';
-            if (c.includes('pedia')) return '#3498DB';
-            if (c.includes('especial')) return '#E67E22';
-            if (c.includes('salud')) return '#9B59B6';
-            if (c.includes('vario')) return '#afb3b0';
-            return '#666666';
+            if (c.includes('clinicas') || c.includes('sanatorio')) return '#E74C3C';      // Rojo
+            if (c.includes('asociacion')) return '#99cfc6';                               // Verde teal
+            if (c.includes('rehabil')) return '#27AE60';                                  // Verde
+            if (c.includes('centr')) return '#F1C40F';                                    // Amarillo
+            if (c.includes('pedia')) return '#3498DB';                                    // Azul
+            if (c.includes('especial')) return '#E67E22';                                 // Naranja
+            if (c.includes('salud')) return '#9B59B6';                                    // Púrpura
+            if (c.includes('vario')) return '#afb3b0';                                    // Gris
+            return '#666666';                                                             // Gris por defecto
         }
         
+        // Crea un icono de marcador circular coloreado
         function createColoredIcon(color) {
             return L.divIcon({
                 className: 'custom-marker',
@@ -831,8 +849,9 @@
         }
         
         // ============================================================
-        // FUNCIONES DE AGRUPAMIENTO
+        // 5. FUNCIONES DE AGRUPAMIENTO POR UBICACIÓN
         // ============================================================
+        // Agrupa prestadores por sus coordenadas (lat/lon con 6 decimales)
         function groupProvidersByLocation(providers) {
             const locationMap = {};
             
@@ -840,12 +859,15 @@
                 const lat = provider.lat;
                 const lon = provider.lon;
                 
+                // Ignora prestadores sin coordenadas válidas
                 if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
                     return;
                 }
                 
+                // Crea una clave redondeando a 6 decimales (precisión suficiente para agrupar)
                 const key = `${lat.toFixed(6)},${lon.toFixed(6)}`;
                 
+                // Si es la primera ubicación, crea un objeto para ella
                 if (!locationMap[key]) {
                     locationMap[key] = {
                         lat: lat,
@@ -854,21 +876,67 @@
                     };
                 }
                 
+                // Añade el prestador a esta ubicación
                 locationMap[key].providers.push(provider);
             });
             
             return Object.values(locationMap);
         }
         
+        // ============================================================
+        // 6. FUNCIÓN GLOBAL PARA EXPANDIR/CONTRAER PRÁCTICAS
+        // ============================================================
+        // Se usa desde los botones onclick en el HTML generado dinámicamente
+        window.toggleProviderPractices = function(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.style.display = element.style.display === 'none' ? 'block' : 'none';
+            }
+        };
+        
+        // ============================================================
+        // 7. GENERAR CONTENIDO DE POPUP PARA MARCADORES
+        // ============================================================
+        // Crea el HTML del popup que aparece al hacer click en un marcador
         function createPopupContent(providers) {
+            
+            // CASO 1: UN SOLO PRESTADOR EN LA UBICACIÓN
             if (providers.length === 1) {
                 const p = providers[0];
+                
+                // Agrupa las prácticas por tipo para mostrar organizadas
+                const practicesByType = {};
+                
+                p.practices.forEach(practice => {
+                    if (!practicesByType[practice.tipo]) {
+                        practicesByType[practice.tipo] = [];
+                    }
+                    practicesByType[practice.tipo].push(practice.especialidad);
+                });
+                
+                // Genera el HTML de las prácticas
+                let practicesHtml = '';
+                Object.keys(practicesByType).sort().forEach(tipo => {
+                    const especialidades = practicesByType[tipo].sort();
+                    practicesHtml += `
+                        <div style="margin-bottom: 8px;">
+                            <div style="font-weight: bold; font-size: 11px; background: #e8e8e8; padding: 4px 6px; border-radius: 3px; margin-bottom: 3px;">
+                                ${tipo}
+                            </div>
+                            <ul style="margin: 0; padding-left: 14px; font-size: 11px; color: #555;">
+                                ${especialidades.map(esp => `<li style="margin: 2px 0;">${esp}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                });
+                
+                // Devuelve el HTML del popup para un prestador
                 return `
                     <div style="font-size: 12px; line-height: 1.6;">
                         <div style="font-weight: bold; color: #333; margin-bottom: 8px;">
                             ${p.Nombre || 'N/A'}
                         </div>
-                        <div style="border-top: 1px solid #eee; padding-top: 8px;">
+                        <div style="border-top: 1px solid #eee; padding-top: 8px; font-size: 11px;">
                             <div><strong>NroPrestador:</strong> ${p.NroPrestador || 'N/A'}</div>
                             <div><strong>Clasificación:</strong> ${p.Clasificacion || 'N/A'}</div>
                             <div><strong>Seccional:</strong> ${p.Seccional || 'N/A'}</div>
@@ -876,35 +944,104 @@
                             <div><strong>Domicilio:</strong> ${p.Domicilio || 'N/A'}</div>
                             <div><strong>Teléfono:</strong> ${p.Telefono || 'N/A'}</div>
                         </div>
+                        <div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 8px;">
+                            <div style="font-weight: bold; margin-bottom: 6px; font-size: 11px;">📋 Prácticas:</div>
+                            ${practicesHtml || '<div style="color: #999; font-size: 11px;">Sin prácticas registradas</div>'}
+                        </div>
                     </div>
                 `;
             }
             
-            const providersList = providers
-                .map((p, index) => `
-                    <div style="
-                        background: ${index % 2 === 0 ? '#f9f9f9' : '#ffffff'};
-                        padding: 10px;
-                        margin: 4px 0;
-                        border-radius: 4px;
-                        border-left: 3px solid ${getColorByClasificacion(p.Clasificacion)};
-                    ">
-                        <div style="font-weight: bold; color: #333; font-size: 12px;">
-                            ${p.Nombre || 'N/A'}
+            // CASO 2: MÚLTIPLES PRESTADORES EN LA MISMA UBICACIÓN
+            
+            // Define el orden de clasificaciones para ordenar correctamente
+            const clasificacionOrder = {
+                'Clinicas y Sanatorios': 0,
+                'Centros Medicos': 1,
+                'Especialistas': 2,
+                'Farmacia': 3
+            };
+            
+            // Ordena por clasificación primero, luego por nombre alfabético
+            const sortedProviders = providers.sort((a, b) => {
+                const orderA = clasificacionOrder[a.Clasificacion] !== undefined ? clasificacionOrder[a.Clasificacion] : 99;
+                const orderB = clasificacionOrder[b.Clasificacion] !== undefined ? clasificacionOrder[b.Clasificacion] : 99;
+                if (orderA !== orderB) return orderA - orderB;
+                return a.Nombre.localeCompare(b.Nombre);
+            });
+            
+            // Genera HTML para cada prestador
+            const providersList = sortedProviders
+                .map((p, index) => {
+                    // Agrupa prácticas por tipo
+                    const practicesByType = {};
+                    p.practices.forEach(practice => {
+                        if (!practicesByType[practice.tipo]) {
+                            practicesByType[practice.tipo] = [];
+                        }
+                        practicesByType[practice.tipo].push(practice.especialidad);
+                    });
+                    
+                    // Genera HTML de las prácticas
+                    let practicesHtml = '';
+                    Object.keys(practicesByType).sort().forEach(tipo => {
+                        const especialidades = practicesByType[tipo].sort();
+                        practicesHtml += `
+                            <div style="margin-bottom: 6px;">
+                                <div style="font-weight: bold; font-size: 10px; background: #d8d8d8; padding: 2px 4px; border-radius: 2px; margin-bottom: 2px;">
+                                    ${tipo}
+                                </div>
+                                <ul style="margin: 0; padding-left: 12px; font-size: 10px;">
+                                    ${especialidades.map(esp => `<li style="margin: 1px 0;">${esp}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    });
+                    
+                    // HTML para cada prestador en el popup
+                    return `
+                        <div style="
+                            background: ${index % 2 === 0 ? '#f9f9f9' : '#ffffff'};
+                            padding: 10px;
+                            margin: 4px 0;
+                            border-radius: 4px;
+                            border-left: 4px solid ${getColorByClasificacion(p.Clasificacion)};
+                        ">
+                            <div style="font-weight: bold; color: #333; font-size: 12px; margin-bottom: 6px;">
+                                ${p.Nombre || 'N/A'}
+                            </div>
+                            <div style="font-size: 11px; color: #666; margin-bottom: 8px;">
+                                <div>NroPrestador: ${p.NroPrestador || 'N/A'}</div>
+                                <div>Clasificación: ${p.Clasificacion || 'N/A'}</div>
+                                <div>Teléfono: ${p.Telefono || 'N/A'}</div>
+                            </div>
+                            <!-- BOTÓN VER PRÁCTICAS: Llama a toggleProviderPractices para expandir/contraer -->
+                            <button onclick="window.toggleProviderPractices('practices-${index}')" style="
+                                padding: 4px 8px;
+                                font-size: 11px;
+                                background: linear-gradient(135deg, #76b8a8 0%, #5a9b8f 100%);
+                                color: white;
+                                border: none;
+                                border-radius: 3px;
+                                cursor: pointer;
+                                width: 100%;
+                            ">
+                                📋 Ver Prácticas
+                            </button>
+                            <!-- DIV oculto con las prácticas (se muestra/oculta con el botón) -->
+                            <div id="practices-${index}" style="display: none; margin-top: 8px; padding: 8px; background: #f0f0f0; border-radius: 3px;">
+                                ${practicesHtml || '<div style="color: #999; font-size: 11px;">Sin prácticas registradas</div>'}
+                            </div>
                         </div>
-                        <div style="font-size: 11px; color: #666; margin-top: 4px;">
-                            <div>NroPrestador: ${p.NroPrestador || 'N/A'}</div>
-                            <div>Clasificación: ${p.Clasificacion || 'N/A'}</div>
-                            <div>Teléfono: ${p.Telefono || 'N/A'}</div>
-                        </div>
-                    </div>
-                `)
+                    `;
+                })
                 .join('');
             
+            // HTML contenedor del popup con múltiples prestadores
             return `
                 <div style="max-width: 100%;">
                     <div style="
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        background: linear-gradient(135deg, #76b8a8 0%, #5a9b8f 100%);
                         color: white;
                         padding: 10px;
                         border-radius: 4px 4px 0 0;
@@ -915,7 +1052,7 @@
                         ${providers.length} prestadores en esta ubicación
                     </div>
                     <div style="
-                        max-height: 300px;
+                        max-height: 450px;
                         overflow-y: auto;
                         font-size: 12px;
                     ">
@@ -925,23 +1062,29 @@
             `;
         }
         
+        // ============================================================
+        // 8. CREAR MARCADORES AGRUPADOS
+        // ============================================================
+        // Crea un marcador en el mapa para una ubicación (con sus prestadores)
         function createClusteredMarker(locationGroup, markerLayer) {
             const { lat, lon, providers } = locationGroup;
             const count = providers.length;
             
             let markerIcon;
             
+            // Si hay un solo prestador, usa su color de clasificación
             if (count === 1) {
                 const color = getColorByClasificacion(providers[0].Clasificacion);
                 markerIcon = createColoredIcon(color);
             } else {
+                // Si hay varios, crea un círculo numerado con gradiente verde teal
                 markerIcon = L.divIcon({
                     className: 'clustered-marker',
                     html: `<div style="
                         width: 40px;
                         height: 40px;
                         border-radius: 50%;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        background: linear-gradient(135deg, #76b8a8 0%, #5a9b8f 100%);
                         border: 3px solid #ffffff;
                         color: white;
                         display: flex;
@@ -958,8 +1101,10 @@
                 });
             }
             
+            // Genera el contenido del popup
             const popupContent = createPopupContent(providers);
             
+            // Crea el marcador y lo añade al mapa
             const marker = L.marker([lat, lon], { icon: markerIcon })
                 .bindPopup(popupContent, { maxWidth: 350, maxHeight: 400 })
                 .addTo(markerLayer);
@@ -968,16 +1113,22 @@
         }
         
         // ============================================================
-        // FUNCIONES PRINCIPALES DEL MAPA
+        // 9. FUNCIONES PRINCIPALES DEL MAPA
         // ============================================================
+        
+        // Construye/reconstruye el mapa general agrupado
         function buildGeneralMapClustered() {
             const mostrarAsociados = document.getElementById('map-mostrar-asociados').checked;
+            
+            // Obtiene los datos filtrados de la tabla
             let rows = tabla.rows({search:'applied'}).data().toArray();
         
+            // Filtra asociados si no están marcados
             if (!mostrarAsociados) {
                 rows = rows.filter(provider => !provider.NroPrestador.includes('-'));
             }
         
+            // Si es la primera vez, inicializa el mapa
             if (!generalMap) {
                 generalMap = L.map('general-map').setView([-34.6, -58.4], 4);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -985,24 +1136,29 @@
                 }).addTo(generalMap);
             }
         
+            // Limpia los marcadores anteriores
             if (generalMarkersLayer) {
                 generalMap.removeLayer(generalMarkersLayer);
             }
             generalMarkersLayer = L.layerGroup().addTo(generalMap);
         
+            // Agrupa prestadores por ubicación
             const bounds = [];
             const locationGroups = groupProvidersByLocation(rows);
             
+            // Crea un marcador por cada grupo de ubicación
             locationGroups.forEach(locationGroup => {
                 createClusteredMarker(locationGroup, generalMarkersLayer);
                 bounds.push([locationGroup.lat, locationGroup.lon]);
             });
         
+            // Ajusta la vista del mapa para mostrar todos los marcadores
             if (bounds.length > 0) {
                 generalMap.fitBounds(bounds, { padding: [20, 20] });
             }
         }
         
+        // Actualiza solo los marcadores sin reconstruir el mapa
         function updateMarkersOnlyClustered() {
             const mostrarAsociados = document.getElementById('map-mostrar-asociados').checked;
             let rows = tabla.rows({search:'applied'}).data().toArray();
@@ -1011,11 +1167,13 @@
                 rows = rows.filter(provider => !provider.NroPrestador.includes('-'));
             }
         
+            // Limpia marcadores antiguos
             if (generalMarkersLayer) {
                 generalMap.removeLayer(generalMarkersLayer);
             }
             generalMarkersLayer = L.layerGroup().addTo(generalMap);
         
+            // Agrupa y crea nuevos marcadores
             const locationGroups = groupProvidersByLocation(rows);
             
             locationGroups.forEach(locationGroup => {
@@ -1023,19 +1181,20 @@
             });
         }
         
+        // ============================================================
+        // 10. FUNCIÓN PRINCIPAL: CARGAR CSV Y PROCESAR DATOS
+        // ============================================================
         $(function() {  
             let providersCompact = [], datosFiltrados = [];  
             let uniqueClasificaciones = new Set();  
         
-            // ============================================================
-            // CARGAR CSV Y PROCESAR DATOS
-            // ============================================================
             Papa.parse("Data_geocoded.csv", {  
             download: true,  
             header: true,  
             delimiter: ";",  
             complete: function(results) {  
         
+                // Filtra datos válidos (con CUIT y excluyendo clínicas con diagnóstico)
                 datosFiltrados = results.data.filter(row => {
                     return row.CUIT && row.CUIT.trim() !== "" &&
                         !(row['Clasificacion prestador'] === 'Clinicas y Sanatorios' &&
@@ -1045,9 +1204,11 @@
                 const providersMap = {};  
                 const uniquePlans = new Set();  
         
+                // Agrupa datos por prestador (NroPrestador-Sucursal)
                 datosFiltrados.forEach(row => {  
                     const key = `${row.NroPrestador}-${row.Sucursal}`;  
                     
+                    // Crea entrada si no existe
                     if (!providersMap[key]) {  
                         providersMap[key] = {  
                             CUIT: row.CUIT,  
@@ -1063,6 +1224,7 @@
                             Clasificacion: row['Clasificacion prestador'],  
                             Plan: new Set(),  
                             practices: new Set(),
+                            // Convierte coordenadas de string a número (reemplaza coma por punto)
                             lat: row.lat ? parseFloat(String(row.lat).replace(",", ".")) : null,
                             lon: row.lon ? parseFloat(String(row.lon).replace(",", ".")) : null
                         };  
@@ -1071,21 +1233,25 @@
                         }  
                     }  
                     
+                    // Añade planes únicos
                     if (row.Plan) {  
                         providersMap[key].Plan.add(row.Plan);  
                         uniquePlans.add(row.Plan);  
                     }  
                     
+                    // Añade prácticas únicas
                     if (row['Tipo de prestador'] && row['Especialidad']) {
                         const practiceKey = `${row['Tipo de prestador']}|${row['Especialidad']}`;
                         providersMap[key].practices.add(practiceKey);
                     }
                 });  
         
+                // Convierte Sets a Arrays para facilitar uso posterior
                 Object.keys(providersMap).forEach(key => {  
                     const planStr = Array.from(providersMap[key].Plan).join(', ');  
                     providersMap[key].Plan = planStr;
                     
+                    // Convierte prácticas a array de objetos {tipo, especialidad}
                     providersMap[key].practices = Array.from(providersMap[key].practices)
                         .map(p => {
                             const [tipo, especialidad] = p.split('|');
@@ -1096,6 +1262,7 @@
                 
                 providersCompact = Object.values(providersMap);  
         
+                // Ordena prestadores: Universal primero, luego Superador, luego alfabético
                 providersCompact.sort((a, b) => {  
                     const aIsUniversal = a.Plan.includes('Universal');  
                     const bIsUniversal = b.Plan.includes('Universal');  
@@ -1109,480 +1276,539 @@
                     return a.Nombre.localeCompare(b.Nombre);  
                 });  
         
-                    // ============================================================
-                    // RENDERIZAR CHECKBOXES DINÁMICAMENTE
-                    // ============================================================
-                    function renderCheckboxes(items, containerId, filterKey) {
-                        const container = document.getElementById(containerId);
-                        container.innerHTML = '';
-                        const sortedItems = Array.from(items).sort();
-                        sortedItems.forEach(item => {
-                            const checkbox = document.createElement('div');
-                            checkbox.className = 'checkbox-item';
-                            checkbox.innerHTML = `
-                                <input type="checkbox" value="${item}" data-filter="${filterKey}">
-                                <label>${item}</label>
-                            `;
-                            const input = checkbox.querySelector('input');
-                            input.addEventListener('change', () => {
-                                if (filterKey === 'tipo') {
-                                    updateEspecialidadOptions();
-                                }
-                            });
-                            container.appendChild(checkbox);
-                        });
-                    }
-        
-                    function updateEspecialidadOptions() {
-                        const selectedTipos = Array.from(document.querySelectorAll('input[data-filter="tipo"]:checked')).map(cb => cb.value);
-                        const selectedSeccionales = Array.from(document.querySelectorAll('input[data-filter="seccional"]:checked')).map(cb => cb.value);
-                        const selectedPlanes = Array.from(document.querySelectorAll('input[data-filter="plan"]:checked')).map(cb => cb.value);
-                        const selectedClasificaciones = Array.from(document.querySelectorAll('input[data-filter="clasificacion"]:checked')).map(cb => cb.value);
-                        const especialidadContainer = document.getElementById('filtro-especialidad-list');
-        
-                        if (selectedTipos.length > 1) {
-                            especialidadContainer.innerHTML = '<div style="color:#999;padding:8px;font-size:12px;">Selecciona un solo Tipo</div>';
-                            return;
-                        }
-        
-                        if (selectedTipos.length === 0) {
-                            especialidadContainer.innerHTML = '<div style="color:#999;padding:8px;font-size:12px;">Selecciona un Tipo</div>';
-                            return;
-                        }
-        
-                        const selectedTipo = selectedTipos[0];
-                        const especialidadesEnDatos = new Set();
-        
-                        // Buscar especialidades que existan en providers que cumplan con TODOS los filtros
-                        providersCompact.forEach(provider => {
-                            // Aplicar filtro de seccional
-                            if (selectedSeccionales.length > 0 && !selectedSeccionales.includes(provider.Seccional)) {
-                                return;
-                            }
-                            // Aplicar filtro de plan
-                            if (selectedPlanes.length > 0) {
-                                const hasMatchingPlan = selectedPlanes.some(plan => provider.Plan.includes(plan));
-                                if (!hasMatchingPlan) return;
-                            }
-                            // Aplicar filtro de clasificación
-                            if (selectedClasificaciones.length > 0 && !selectedClasificaciones.includes(provider.Clasificacion)) {
-                                return;
-                            }
-        
-                            // Buscar especialidades del tipo seleccionado
-                            provider.practices.forEach(practice => {
-                                if (practice.tipo === selectedTipo) {
-                                    especialidadesEnDatos.add(practice.especialidad);
-                                }
-                            });
-                        });
-        
-                        especialidadContainer.innerHTML = '';
-        
-                        if (especialidadesEnDatos.size === 0) {
-                            especialidadContainer.innerHTML = '<div style="color:#999;padding:8px;font-size:12px;">Sin especialidades en esta combinación</div>';
-                            return;
-                        }
-        
-                        const sortedEspecialidades = Array.from(especialidadesEnDatos).sort();
-        
-                        sortedEspecialidades.forEach(esp => {
-                            const checkbox = document.createElement('div');
-                            checkbox.className = 'checkbox-item';
-                            checkbox.innerHTML = `
-                                <input type="checkbox" value="${esp}" data-filter="especialidad">
-                                <label>${esp}</label>
-                            `;
-                            const input = checkbox.querySelector('input');
-                            input.addEventListener('change', applyFilters);
-                            especialidadContainer.appendChild(checkbox);
-                        });
-                    }
-        
-                    const tiposNoGuardia = Object.keys(tipoEspecialidad).filter(t => !t.includes('Guardia'));
-                    const tiposGuardia = Object.keys(tipoEspecialidad).filter(t => t.includes('Guardia'));
-        
-                    renderCheckboxes(seccionales, 'filtro-seccional-list', 'seccional');
-                    renderCheckboxes(Array.from(uniquePlans), 'filtro-plan-list', 'plan');
-                    renderCheckboxes(Array.from(uniqueClasificaciones), 'filtro-clasificacion-list', 'clasificacion');
-                    renderCheckboxes(tiposGuardia, 'filtro-guardia-list', 'tipo');
-                    renderCheckboxes(tiposNoGuardia, 'filtro-tipo-list', 'tipo');
-        
-                    // ============================================================
-                    // FUNCIÓN PARA APLICAR FILTROS COMBINATORIOS
-                    // ============================================================
-                    function getSelectedFilters() {
-                        const filters = {
-                            seccional: [],
-                            plan: [],
-                            clasificacion: [],
-                            tipo: [],
-                            especialidad: []
-                        };
-        
-                        document.querySelectorAll('input[type="checkbox"][data-filter]').forEach(checkbox => {
-                            if (checkbox.checked && checkbox.value) {
-                                filters[checkbox.dataset.filter].push(checkbox.value);
+                // ============================================================
+                // 11. RENDERIZAR CHECKBOXES DINÁMICAMENTE
+                // ============================================================
+                function renderCheckboxes(items, containerId, filterKey) {
+                    const container = document.getElementById(containerId);
+                    container.innerHTML = '';
+                    const sortedItems = Array.from(items).sort();
+                    
+                    sortedItems.forEach(item => {
+                        const checkbox = document.createElement('div');
+                        checkbox.className = 'checkbox-item';
+                        checkbox.innerHTML = `
+                            <input type="checkbox" value="${item}" data-filter="${filterKey}">
+                            <label>${item}</label>
+                        `;
+                        const input = checkbox.querySelector('input');
+                        
+                        // Cuando se selecciona tipo, actualiza especialidades disponibles
+                        input.addEventListener('change', () => {
+                            if (filterKey === 'tipo') {
+                                updateEspecialidadOptions();
                             }
                         });
-        
-                        return filters;
-                    }
-        
-                    function applyFilters() {
-                        const filters = getSelectedFilters();
-                        const mostrarAsociados = document.getElementById('mostrar-asociados').checked;
-        
-                        const filteredData = providersCompact.filter(provider => {
-                            if (provider.Clasificacion === 'Clinicas y Sanatorios' &&  
-                               provider.practices.some(p => p.tipo === 'DiagnosticoyTratamiento')) {  
-                                return false;  
-                            }
-        
-                            if (!mostrarAsociados && provider.NroPrestador.includes('-')) {
-                                return false;
-                            }
-        
-                            if (filters.seccional.length > 0 && !filters.seccional.includes(provider.Seccional)) {
-                                return false;
-                            }
-        
-                            if (filters.plan.length > 0) {
-                                const hasMatchingPlan = filters.plan.some(plan => provider.Plan.includes(plan));
-                                if (!hasMatchingPlan) return false;
-                            }
-        
-                            if (filters.clasificacion.length > 0 && !filters.clasificacion.includes(provider.Clasificacion)) {
-                                return false;
-                            }
-        
-                            if (filters.tipo.length > 0 || filters.especialidad.length > 0) {
-                                const hasMatchingPractice = provider.practices.some(p => {
-                                    const matchTipo = filters.tipo.length === 0 || filters.tipo.includes(p.tipo);
-                                    const matchEspecialidad = filters.especialidad.length === 0 || filters.especialidad.includes(p.especialidad);
-                                    return matchTipo && matchEspecialidad;
-                                });
-                                if (!hasMatchingPractice) return false;
-                            }
-        
-                            return true;
-                        });
-        
-                        tabla.clear().rows.add(filteredData).draw();
-                        updateClearAllButton();
-                    }
-        
-                    // ============================================================
-                    // DATATABLE
-                    // ============================================================
-                    tabla = $('#tabla-prestadores').DataTable({  
-                        data: providersCompact.filter(provider => {
-                            return !(provider.Clasificacion === 'Clinicas y Sanatorios' &&
-                                    provider.practices.some(p => p.tipo === 'DiagnosticoyTratamiento'));
-                        }),  
-                        columns: [  
-                            {data: null, defaultContent: '<button class="details-control" style="background: none; border: none; color: #3498DB; font-size: 18px; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;"><i class="fas fa-info-circle"></i></button>', orderable: false },
-                            {data: 'Nombre', defaultContent: '' },  
-                            {data: 'NroPrestador', defaultContent: '' },  
-                            {data: 'Seccional', defaultContent: '' },  
-                            {data: 'Localidad', defaultContent: '' },  
-                            {data: 'Plan', defaultContent: '' }  
-                        ],  
-                        language: {url: 'https://cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json'},  
-                        pageLength: 25,  
-                        ordering: false,  
-                        searching: true,  
-                        dom: 'Bfrtip',  
-                        buttons: [  
-                                    { extend: 'excelHtml5',
-                                      title: () => 'Prestadores Médicos',
-                                      text: '<i class="fas fa-file-excel"></i> EXCEL'
-                                    },  
-                                    { extend: 'copyHtml5',
-                                      title: () => 'Prestadores Médicos',
-                                      text: '<i class="fas fa-copy"></i> COPIAR'
-                                    }    
-                        ],     
-            
-                        createdRow: function(row, data) {  
-                            if (data.Plan.includes('Universal')) {  
-                                $(row).addClass('universal');  
-                            } else if (data.Plan.includes('Superador')) {  
-                                $(row).addClass('superador');  
-                            }  
-                        },  
-                        drawCallback: function() {  
-                            $('tr.universal td:first-child').css('background-color', 'var(--universal-bg)');  
-                            $('tr.superador td:first-child').css('background-color', 'var(--superador-bg)');  
-                            updateClearAllButton();  
-                        }   
-        
+                        container.appendChild(checkbox);
                     });
-                    // ============================================================
-                    // EVENTOS DE FILTROS
-                    // ============================================================
-                    document.getElementById('apply-btn-esp').addEventListener('click', applyFilters);
+                }
         
-                    document.getElementById('clear-filters-btn').addEventListener('click', function() {
-                        document.querySelectorAll('input[type="checkbox"][data-filter]').forEach(checkbox => {
-                            checkbox.checked = false;
+                // ============================================================
+                // 12. ACTUALIZAR ESPECIALIDADES DINÁMICAMENTE
+                // ============================================================
+                // Solo muestra especialidades que existen en la combinación de filtros actual
+                function updateEspecialidadOptions() {
+                    const selectedTipos = Array.from(document.querySelectorAll('input[data-filter="tipo"]:checked')).map(cb => cb.value);
+                    const selectedSeccionales = Array.from(document.querySelectorAll('input[data-filter="seccional"]:checked')).map(cb => cb.value);
+                    const selectedPlanes = Array.from(document.querySelectorAll('input[data-filter="plan"]:checked')).map(cb => cb.value);
+                    const selectedClasificaciones = Array.from(document.querySelectorAll('input[data-filter="clasificacion"]:checked')).map(cb => cb.value);
+                    const especialidadContainer = document.getElementById('filtro-especialidad-list');
+        
+                    // Solo permite un tipo de prestación a la vez
+                    if (selectedTipos.length > 1) {
+                        especialidadContainer.innerHTML = '<div style="color:#999;padding:8px;font-size:12px;">Selecciona un solo Tipo</div>';
+                        return;
+                    }
+        
+                    if (selectedTipos.length === 0) {
+                        especialidadContainer.innerHTML = '<div style="color:#999;padding:8px;font-size:12px;">Selecciona un Tipo</div>';
+                        return;
+                    }
+        
+                    const selectedTipo = selectedTipos[0];
+                    const especialidadesEnDatos = new Set();
+        
+                    // Busca especialidades que existan en prestadores que cumplan TODOS los filtros
+                    providersCompact.forEach(provider => {
+                        // Aplica filtro de seccional
+                        if (selectedSeccionales.length > 0 && !selectedSeccionales.includes(provider.Seccional)) {
+                            return;
+                        }
+                        // Aplica filtro de plan
+                        if (selectedPlanes.length > 0) {
+                            const hasMatchingPlan = selectedPlanes.some(plan => provider.Plan.includes(plan));
+                            if (!hasMatchingPlan) return;
+                        }
+                        // Aplica filtro de clasificación
+                        if (selectedClasificaciones.length > 0 && !selectedClasificaciones.includes(provider.Clasificacion)) {
+                            return;
+                        }
+        
+                        // Busca especialidades del tipo seleccionado
+                        provider.practices.forEach(practice => {
+                            if (practice.tipo === selectedTipo) {
+                                especialidadesEnDatos.add(practice.especialidad);
+                            }
                         });
-                        document.getElementById('mostrar-asociados').checked = true;
-                        $('#search-input').val('');
-                        updateEspecialidadOptions();
-                        tabla.clear().rows.add(providersCompact).draw();
-                        updateClearAllButton();
                     });
         
-                    document.getElementById('mostrar-asociados').addEventListener('change', applyFilters);
+                    especialidadContainer.innerHTML = '';
+        
+                    if (especialidadesEnDatos.size === 0) {
+                        especialidadContainer.innerHTML = '<div style="color:#999;padding:8px;font-size:12px;">Sin especialidades en esta combinación</div>';
+                        return;
+                    }
+        
+                    // Renderiza checkboxes de especialidades encontradas
+                    const sortedEspecialidades = Array.from(especialidadesEnDatos).sort();
+        
+                    sortedEspecialidades.forEach(esp => {
+                        const checkbox = document.createElement('div');
+                        checkbox.className = 'checkbox-item';
+                        checkbox.innerHTML = `
+                            <input type="checkbox" value="${esp}" data-filter="especialidad">
+                            <label>${esp}</label>
+                        `;
+                        const input = checkbox.querySelector('input');
+                        input.addEventListener('change', applyFilters);
+                        especialidadContainer.appendChild(checkbox);
+                    });
+                }
+        
+                // ============================================================
+                // 13. RENDERIZAR TODOS LOS CHECKBOXES INICIALES
+                // ============================================================
+                const tiposNoGuardia = Object.keys(tipoEspecialidad).filter(t => !t.includes('Guardia'));
+                const tiposGuardia = Object.keys(tipoEspecialidad).filter(t => t.includes('Guardia'));
+        
+                renderCheckboxes(seccionales, 'filtro-seccional-list', 'seccional');
+                renderCheckboxes(Array.from(uniquePlans), 'filtro-plan-list', 'plan');
+                renderCheckboxes(Array.from(uniqueClasificaciones), 'filtro-clasificacion-list', 'clasificacion');
+                renderCheckboxes(tiposGuardia, 'filtro-guardia-list', 'tipo');
+                renderCheckboxes(tiposNoGuardia, 'filtro-tipo-list', 'tipo');
+        
+                // ============================================================
+                // 14. FUNCIÓN PARA OBTENER FILTROS SELECCIONADOS
+                // ============================================================
+                function getSelectedFilters() {
+                    const filters = {
+                        seccional: [],
+                        plan: [],
+                        clasificacion: [],
+                        tipo: [],
+                        especialidad: []
+                    };
         
                     document.querySelectorAll('input[type="checkbox"][data-filter]').forEach(checkbox => {
-                        if (checkbox.dataset.filter === 'tipo') {
-                            checkbox.addEventListener('change', () => {
-                                updateEspecialidadOptions();
-                            });
-                        } else if (checkbox.dataset.filter === 'seccional' || checkbox.dataset.filter === 'plan' || checkbox.dataset.filter === 'clasificacion') {
-                            // Estos filtros deben actualizar las especialidades disponibles
-                            checkbox.addEventListener('change', () => {
-                                updateEspecialidadOptions();
-                                applyFilters();
-                            });
-                        } else {
-                            checkbox.addEventListener('change', applyFilters);
+                        if (checkbox.checked && checkbox.value) {
+                            filters[checkbox.dataset.filter].push(checkbox.value);
                         }
                     });
         
-                    $('#search-input').on('keyup', function() {  
-                        tabla.search(this.value).draw();  
-                        updateClearAllButton();  
-                    });  
+                    return filters;
+                }
         
-                    $('#clear-all-btn').click(function() {  
-                        $('#search-input').val('');  
-                        tabla.search('').draw();  
-                        updateClearAllButton();  
-                    });  
+                // ============================================================
+                // 15. APLICAR FILTROS COMBINATORIOS
+                // ============================================================
+                function applyFilters() {
+                    const filters = getSelectedFilters();
+                    const mostrarAsociados = document.getElementById('mostrar-asociados').checked;
         
-                    // ============================================================
-                    // DETALLES Y MAPA INDIVIDUAL
-                    // ============================================================
-                    $('#tabla-prestadores tbody').on('click', 'button.details-control', function () {  
-                        const tr = $(this).closest('tr');  
-                        const row = tabla.row(tr);  
-                        const rowData = row.data();  
-                    
-                        if (row.child.isShown()) {  
-                            row.child.hide();  
-                            tr.removeClass('shown');  
-                            $(this).html('<i class="fas fa-info-circle"></i>'); 
-                        } else {  
-                            $(this).html('<i class="fas fa-minus-circle"></i>');  
-                            
-                            const practicesByType = {};  
-                    
-                            rowData.practices.forEach(practice => {  
-                                if(!(rowData.Clasificacion === 'Clinicas y Sanatorios' && practice.tipo === 'DiagnosticoyTratamiento')){  
-                                    if (!practicesByType[practice.tipo]) {  
-                                        practicesByType[practice.tipo] = new Set();
-                                    }  
-                                    practicesByType[practice.tipo].add(practice.especialidad);   
-                                }   
-                            });  
-                    
-                            let practicesHtml = '<div class="practices-container">';  
-                            Object.keys(practicesByType).sort().forEach(tipo => {  
-                                const especialidades = Array.from(practicesByType[tipo]).sort();
-                                
-                                practicesHtml += `  
-                                <div class="practice-type-container">  
-                                    <div class="practice-type-title">${tipo}</div>  
-                                    <ul class="practice-list">`;  
-                                
-                                especialidades.forEach(especialidad => {  
-                                    practicesHtml += `<li>${especialidad}</li>`;  
-                                });  
-                                
-                                practicesHtml += `  
-                                    </ul>  
-                                </div>`;  
-                            });  
-                            practicesHtml += '</div>';  
-                    
-                            const mapId = `mapa-${(rowData.CUIT).replace(/\W/g,'')}-${(rowData.Domicilio).replace(/\W/g,'')}`;  
-                            let detalleHtml = `  
-                            <div class="details-child">  
-                                <table class="details-table">  
-                                    <tr><th>Provincia:</th><td>${rowData.Provincia||'N/A'}</td></tr>  
-                                    <tr><th>Partido:</th><td>${rowData.Partido||'N/A'}</td></tr>  
-                                    <tr><th>Localidad:</th><td>${rowData.Localidad||'N/A'}</td></tr>  
-                                    <tr><th>Domicilio:</th><td>${rowData.Domicilio||'N/A'}</td></tr>  
-                                    <tr><th>Telefono:</th><td>${rowData.Telefono||'N/A'}</td></tr>  
-                                    <tr><th>Clasificación:</th><td>${rowData.Clasificacion||'N/A'}</td></tr>  
-                                    <tr><th>Prácticas:</th><td>${practicesHtml}</td></tr>  
-                                    <tr><th>Ubicación:</th>  
-                                        <td>  
-                                            <div id="${mapId}" class="map-container"></div>  
-                                        </td>  
-                                    </tr>  
-                                </table>  
-                            </div>`;  
-                            row.child(detalleHtml).show();  
-                            tr.addClass('shown');  
-                    
-                            const hasCoords =
-                                rowData.lat != null && rowData.lon != null &&
-                                !isNaN(rowData.lat) && !isNaN(rowData.lon);
-                    
-                            if (hasCoords) {
-                                const map = L.map(mapId).setView([rowData.lat, rowData.lon], 16);
-                                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: 'OpenStreetMap'}).addTo(map);
-                                const address = [rowData.Domicilio, rowData.Localidad, rowData.Partido, rowData.Provincia].filter(Boolean).join(", ");
-                                L.marker([rowData.lat, rowData.lon]).addTo(map).bindPopup(address).openPopup();
-                            } else {
-                                document.getElementById(mapId).innerHTML =
-                                    "<div style='color:#b71c1c;padding:30px;text-align:center;'>Sin coordenadas (lat/lon) en Data_geocoded.csv.</div>";
-                            }
-                        }  
+                    // Filtra prestadores según criterios seleccionados
+                    const filteredData = providersCompact.filter(provider => {
+                        // Excluye clínicas con diagnóstico
+                        if (provider.Clasificacion === 'Clinicas y Sanatorios' &&  
+                           provider.practices.some(p => p.tipo === 'DiagnosticoyTratamiento')) {  
+                            return false;  
+                        }
+        
+                        // Filtro de prestadores asociados
+                        if (!mostrarAsociados && provider.NroPrestador.includes('-')) {
+                            return false;
+                        }
+        
+                        // Filtro de seccional
+                        if (filters.seccional.length > 0 && !filters.seccional.includes(provider.Seccional)) {
+                            return false;
+                        }
+        
+                        // Filtro de plan
+                        if (filters.plan.length > 0) {
+                            const hasMatchingPlan = filters.plan.some(plan => provider.Plan.includes(plan));
+                            if (!hasMatchingPlan) return false;
+                        }
+        
+                        // Filtro de clasificación
+                        if (filters.clasificacion.length > 0 && !filters.clasificacion.includes(provider.Clasificacion)) {
+                            return false;
+                        }
+        
+                        // Filtro de tipo y especialidad
+                        if (filters.tipo.length > 0 || filters.especialidad.length > 0) {
+                            const hasMatchingPractice = provider.practices.some(p => {
+                                const matchTipo = filters.tipo.length === 0 || filters.tipo.includes(p.tipo);
+                                const matchEspecialidad = filters.especialidad.length === 0 || filters.especialidad.includes(p.especialidad);
+                                return matchTipo && matchEspecialidad;
+                            });
+                            if (!hasMatchingPractice) return false;
+                        }
+        
+                        return true;
                     });
+        
+                    // Actualiza la tabla con datos filtrados
+                    tabla.clear().rows.add(filteredData).draw();
+                    updateClearAllButton();
+                }
+        
+                // ============================================================
+                // 16. INICIALIZAR DATATABLE
+                // ============================================================
+                tabla = $('#tabla-prestadores').DataTable({  
+                    data: providersCompact.filter(provider => {
+                        return !(provider.Clasificacion === 'Clinicas y Sanatorios' &&
+                                provider.practices.some(p => p.tipo === 'DiagnosticoyTratamiento'));
+                    }),  
+                    columns: [  
+                        {data: null, defaultContent: '<button class="details-control" style="background: none; border: none; color: #3498DB; font-size: 18px; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;"><i class="fas fa-info-circle"></i></button>', orderable: false },
+                        {data: 'Nombre', defaultContent: '' },  
+                        {data: 'NroPrestador', defaultContent: '' },  
+                        {data: 'Seccional', defaultContent: '' },  
+                        {data: 'Localidad', defaultContent: '' },  
+                        {data: 'Plan', defaultContent: '' }  
+                    ],  
+                    language: {url: 'https://cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json'},  
+                    pageLength: 25,  
+                    ordering: false,  
+                    searching: true,  
+                    dom: 'Bfrtip',  
+                    buttons: [  
+                        { 
+                            extend: 'excelHtml5',
+                            title: () => 'Prestadores Médicos',
+                            text: '<i class="fas fa-file-excel"></i> EXCEL'
+                        },  
+                        { 
+                            extend: 'copyHtml5',
+                            title: () => 'Prestadores Médicos',
+                            text: '<i class="fas fa-copy"></i> COPIAR'
+                        }    
+                    ],     
+            
+                    createdRow: function(row, data) {  
+                        // Resalta filas de Universal/Superador
+                        if (data.Plan.includes('Universal')) {  
+                            $(row).addClass('universal');  
+                        } else if (data.Plan.includes('Superador')) {  
+                            $(row).addClass('superador');  
+                        }  
+                    },  
+                    drawCallback: function() {  
+                        $('tr.universal td:first-child').css('background-color', 'var(--universal-bg)');  
+                        $('tr.superador td:first-child').css('background-color', 'var(--superador-bg)');  
+                        updateClearAllButton();  
+                    }   
+                });
+        
+                // ============================================================
+                // 17. EVENTOS DE FILTROS
+                // ============================================================
+                document.getElementById('apply-btn-esp').addEventListener('click', applyFilters);
+        
+                // Botón limpiar todos los filtros
+                document.getElementById('clear-filters-btn').addEventListener('click', function() {
+                    document.querySelectorAll('input[type="checkbox"][data-filter]').forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+                    document.getElementById('mostrar-asociados').checked = true;
+                    $('#search-input').val('');
+                    updateEspecialidadOptions();
+                    tabla.clear().rows.add(providersCompact).draw();
+                    updateClearAllButton();
+                });
+        
+                // Checkbox mostrar asociados
+                document.getElementById('mostrar-asociados').addEventListener('change', applyFilters);
+        
+                // Eventos para cada checkbox
+                document.querySelectorAll('input[type="checkbox"][data-filter]').forEach(checkbox => {
+                    if (checkbox.dataset.filter === 'tipo') {
+                        checkbox.addEventListener('change', () => {
+                            updateEspecialidadOptions();
+                        });
+                    } else if (checkbox.dataset.filter === 'seccional' || checkbox.dataset.filter === 'plan' || checkbox.dataset.filter === 'clasificacion') {
+                        // Estos filtros deben actualizar las especialidades disponibles
+                        checkbox.addEventListener('change', () => {
+                            updateEspecialidadOptions();
+                            applyFilters();
+                        });
+                    } else {
+                        checkbox.addEventListener('change', applyFilters);
+                    }
+                });
+        
+                // Búsqueda en tiempo real
+                $('#search-input').on('keyup', function() {  
+                    tabla.search(this.value).draw();  
+                    updateClearAllButton();  
+                });  
+        
+                // Botón limpiar búsqueda
+                $('#clear-all-btn').click(function() {  
+                    $('#search-input').val('');  
+                    tabla.search('').draw();  
+                    updateClearAllButton();  
+                });  
+        
+                // ============================================================
+                // 18. DETALLES Y MAPA INDIVIDUAL
+                // ============================================================
+                // Evento al hacer click en botón de detalles
+                $('#tabla-prestadores tbody').on('click', 'button.details-control', function () {  
+                    const tr = $(this).closest('tr');  
+                    const row = tabla.row(tr);  
+                    const rowData = row.data();  
+                
+                    // Toggle: si está abierto, lo cierra
+                    if (row.child.isShown()) {  
+                        row.child.hide();  
+                        tr.removeClass('shown');  
+                        $(this).html('<i class="fas fa-info-circle"></i>'); 
+                    } else {  
+                        // Abre el detalle
+                        $(this).html('<i class="fas fa-minus-circle"></i>');  
+                        
+                        // Agrupa prácticas por tipo
+                        const practicesByType = {};  
+                
+                        rowData.practices.forEach(practice => {  
+                            if(!(rowData.Clasificacion === 'Clinicas y Sanatorios' && practice.tipo === 'DiagnosticoyTratamiento')){  
+                                if (!practicesByType[practice.tipo]) {  
+                                    practicesByType[practice.tipo] = new Set();
+                                }  
+                                practicesByType[practice.tipo].add(practice.especialidad);   
+                            }   
+                        });  
+                
+                        // Genera HTML de prácticas
+                        let practicesHtml = '<div class="practices-container">';  
+                        Object.keys(practicesByType).sort().forEach(tipo => {  
+                            const especialidades = Array.from(practicesByType[tipo]).sort();
+                            
+                            practicesHtml += `  
+                            <div class="practice-type-container">  
+                                <div class="practice-type-title">${tipo}</div>  
+                                <ul class="practice-list">`;
+                            
+                            especialidades.forEach(especialidad => {  
+                                practicesHtml += `<li>${especialidad}</li>`;
+                            });  
+                            
+                            practicesHtml += `  
+                                </ul>  
+                            </div>`;
+                        });  
+                        practicesHtml += '</div>';  
+                
+                        // Genera ID único para el mapa
+                        const mapId = `mapa-${(rowData.CUIT).replace(/\W/g,'')}-${(rowData.Domicilio).replace(/\W/g,'')}`;
+                        
+                        // Genera HTML del detalle completo
+                        let detalleHtml = `  
+                        <div class="details-child">  
+                            <table class="details-table">  
+                                <tr><th>Provincia:</th><td>${rowData.Provincia||'N/A'}</td></tr>  
+                                <tr><th>Partido:</th><td>${rowData.Partido||'N/A'}</td></tr>  
+                                <tr><th>Localidad:</th><td>${rowData.Localidad||'N/A'}</td></tr>  
+                                <tr><th>Domicilio:</th><td>${rowData.Domicilio||'N/A'}</td></tr>  
+                                <tr><th>Telefono:</th><td>${rowData.Telefono||'N/A'}</td></tr>  
+                                <tr><th>Clasificación:</th><td>${rowData.Clasificacion||'N/A'}</td></tr>  
+                                <tr><th>Prácticas:</th><td>${practicesHtml}</td></tr>  
+                                <tr><th>Ubicación:</th>  
+                                    <td>  
+                                        <div id="${mapId}" class="map-container"></div>  
+                                    </td>  
+                                </tr>  
+                            </table>  
+                        </div>`;
+                        
+                        row.child(detalleHtml).show();  
+                        tr.addClass('shown');  
+                
+                        // Verifica que haya coordenadas
+                        const hasCoords =
+                            rowData.lat != null && rowData.lon != null &&
+                            !isNaN(rowData.lat) && !isNaN(rowData.lon);
+                
+                        if (hasCoords) {
+                            // Crea el mapa individual
+                            const map = L.map(mapId).setView([rowData.lat, rowData.lon], 16);
+                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: 'OpenStreetMap'}).addTo(map);
+                            const address = [rowData.Domicilio, rowData.Localidad, rowData.Partido, rowData.Provincia].filter(Boolean).join(", ");
+                            L.marker([rowData.lat, rowData.lon]).addTo(map).bindPopup(address).openPopup();
+                        } else {
+                            // Muestra mensaje si no hay coordenadas
+                            document.getElementById(mapId).innerHTML =
+                                "<div style='color:#b71c1c;padding:30px;text-align:center;'>Sin coordenadas (lat/lon) en Data_geocoded.csv.</div>";
+                        }
+                    }  
+                });
           
         
-                    // ============================================================
-                    // ESTADÍSTICAS
-                    // ============================================================
-                    const statsModal = document.getElementById('stats-modal');  
-                    const statsBtn = document.getElementById('stats-btn');  
-                    const closeStats = document.getElementById('close-stats');  
+                // ============================================================
+                // 19. ESTADÍSTICAS - GRÁFICOS Y MODAL
+                // ============================================================
+                const statsModal = document.getElementById('stats-modal');  
+                const statsBtn = document.getElementById('stats-btn');  
+                const closeStats = document.getElementById('close-stats');  
         
-                    statsBtn.onclick = function() {  
-                        statsModal.style.display = 'block';  
-                        const filteredData = tabla.rows({search: 'applied'}).data().toArray();  
-                        const isDark = body.classList.contains('dark-mode');  
+                statsBtn.onclick = function() {  
+                    statsModal.style.display = 'block';  
+                    const filteredData = tabla.rows({search: 'applied'}).data().toArray();  
+                    const isDark = body.classList.contains('dark-mode');  
         
-                        const totalPrestadores = filteredData.length;  
-                        const universalCount = filteredData.filter(p => p.Plan.includes('Universal')).length;  
-                        const superadorCount = filteredData.filter(p => p.Plan.includes('Superador')).length;  
-                        const seccionalCount = {};  
-                        filteredData.forEach(p => seccionalCount[p.Seccional] = (seccionalCount[p.Seccional] || 0) + 1);  
-                        const topSeccional = Object.entries(seccionalCount).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];  
-                        document.getElementById('stats-summary').innerHTML = `  
-                            Total Prestadores: ${totalPrestadores} | Universal: ${universalCount} | Superador: ${superadorCount} |  
-                            Top Seccional: ${topSeccional[0]} (${topSeccional[1]})  
-                        `;  
+                    // Calcula estadísticas generales
+                    const totalPrestadores = filteredData.length;  
+                    const universalCount = filteredData.filter(p => p.Plan.includes('Universal')).length;  
+                    const superadorCount = filteredData.filter(p => p.Plan.includes('Superador')).length;  
+                    
+                    // Conta prestadores por seccional
+                    const seccionalCount = {};  
+                    filteredData.forEach(p => seccionalCount[p.Seccional] = (seccionalCount[p.Seccional] || 0) + 1);  
+                    const topSeccional = Object.entries(seccionalCount).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];  
+                    
+                    document.getElementById('stats-summary').innerHTML = `  
+                        Total Prestadores: ${totalPrestadores} | Universal: ${universalCount} | Superador: ${superadorCount} |  
+                        Top Seccional: ${topSeccional[0]} (${topSeccional[1]})  
+                    `;  
         
-                        const seccionalLabels = Object.keys(seccionalCount);  
-                        const seccionalData = Object.values(seccionalCount);  
-                        const chartTextColor = isDark ? '#fff' : '#000';  
-                        const chartBgColors = seccionalLabels.map(() => isDark ? '#76b8a8' : '#497e76');  
+                    // Gráfico 1: Prestadores por Seccional
+                    const seccionalLabels = Object.keys(seccionalCount);  
+                    const seccionalData = Object.values(seccionalCount);  
+                    const chartTextColor = isDark ? '#fff' : '#000';  
+                    const chartBgColors = seccionalLabels.map(() => isDark ? '#76b8a8' : '#497e76');  
         
-                        if (!seccionalChart) {  
-                            seccionalChart = new Chart(document.getElementById('seccional-chart'), {  
-                                type: 'bar',  
-                                data: { labels: seccionalLabels, datasets: [{ label: 'Prestadores por Seccional', data: seccionalData, backgroundColor: chartBgColors }] },  
-                                options: { scales: { y: { beginAtZero: true, ticks: { color: chartTextColor } }, x: { ticks: { color: chartTextColor } } }, plugins: { legend: { labels: { color: chartTextColor } } } }  
-                            });  
-                        } else {  
-                            seccionalChart.data.labels = seccionalLabels;  
-                            seccionalChart.data.datasets[0].data = seccionalData;  
-                            seccionalChart.data.datasets[0].backgroundColor = chartBgColors;  
-                            seccionalChart.options.scales.y.ticks.color = chartTextColor;  
-                            seccionalChart.options.scales.x.ticks.color = chartTextColor;  
-                            seccionalChart.options.plugins.legend.labels.color = chartTextColor;  
-                            seccionalChart.update();  
-                        }  
-        
-                        const planCount = { Universal: universalCount, Superador: superadorCount };  
-                        const planBgColors = isDark ? ['#3a6159', '#5e3a4d'] : ['#e6f7e6', '#f0e6ff'];  
-        
-                        if (!planChart) {  
-                            planChart = new Chart(document.getElementById('plan-chart'), {  
-                                type: 'pie',  
-                                data: { labels: ['Universal', 'Superador'], datasets: [{ data: [planCount.Universal, planCount.Superador], backgroundColor: planBgColors }] },  
-                                options: { plugins: { legend: { labels: { color: chartTextColor } } } }  
-                            });  
-                        } else {  
-                            planChart.data.datasets[0].data = [planCount.Universal, planCount.Superador];  
-                            planChart.data.datasets[0].backgroundColor = planBgColors;  
-                            planChart.options.plugins.legend.labels.color = chartTextColor;  
-                            planChart.update();  
-                        }  
-        
-                        const clasificacionCount = {};  
-                        filteredData.forEach(provider => {  
-                            clasificacionCount[provider.Clasificacion] = (clasificacionCount[provider.Clasificacion] || 0) + 1;  
+                    if (!seccionalChart) {  
+                        seccionalChart = new Chart(document.getElementById('seccional-chart'), {  
+                            type: 'bar',  
+                            data: { labels: seccionalLabels, datasets: [{ label: 'Prestadores por Seccional', data: seccionalData, backgroundColor: chartBgColors }] },  
+                            options: { scales: { y: { beginAtZero: true, ticks: { color: chartTextColor } }, x: { ticks: { color: chartTextColor } } }, plugins: { legend: { labels: { color: chartTextColor } } } }  
                         });  
-                        const sortedClasif = Object.entries(clasificacionCount).sort((a, b) => b[1] - a[1]).slice(0, 5);  
-                        const clasifLabels = sortedClasif.map(([key]) => key);  
-                        const clasifData = sortedClasif.map(([, value]) => value);  
-                        const clasifBgColors = clasifLabels.map(() => isDark ? '#b85a5a' : '#8c4a4a');  
+                    } else {  
+                        seccionalChart.data.labels = seccionalLabels;  
+                        seccionalChart.data.datasets[0].data = seccionalData;  
+                        seccionalChart.data.datasets[0].backgroundColor = chartBgColors;  
+                        seccionalChart.options.scales.y.ticks.color = chartTextColor;  
+                        seccionalChart.options.scales.x.ticks.color = chartTextColor;  
+                        seccionalChart.options.plugins.legend.labels.color = chartTextColor;  
+                        seccionalChart.update();  
+                    }  
         
-                        if (!clasificacionChart) {  
-                            clasificacionChart = new Chart(document.getElementById('clasificacion-chart'), {  
-                                type: 'bar',  
-                                data: { labels: clasifLabels, datasets: [{ label: 'Top 5 Clasificaciones', data: clasifData, backgroundColor: clasifBgColors }] },  
-                                options: { scales: { y: { beginAtZero: true, ticks: { color: chartTextColor } }, x: { ticks: { color: chartTextColor } } }, plugins: { legend: { labels: { color: chartTextColor } } } }  
-                            });  
-                        } else {  
-                            clasificacionChart.data.labels = clasifLabels;  
-                            clasificacionChart.data.datasets[0].data = clasifData;  
-                            clasificacionChart.data.datasets[0].backgroundColor = clasifBgColors;  
-                            clasificacionChart.options.scales.y.ticks.color = chartTextColor;  
-                            clasificacionChart.options.scales.x.ticks.color = chartTextColor;  
-                            clasificacionChart.options.plugins.legend.labels.color = chartTextColor;  
-                            clasificacionChart.update();  
-                        }  
-                    };  
+                    // Gráfico 2: Distribución Universal vs Superador
+                    const planCount = { Universal: universalCount, Superador: superadorCount };  
+                    const planBgColors = isDark ? ['#3a6159', '#5e3a4d'] : ['#e6f7e6', '#f0e6ff'];  
         
-                    closeStats.onclick = function() {  
-                        statsModal.style.display = 'none';  
-                    };  
+                    if (!planChart) {  
+                        planChart = new Chart(document.getElementById('plan-chart'), {  
+                            type: 'pie',  
+                            data: { labels: ['Universal', 'Superador'], datasets: [{ data: [planCount.Universal, planCount.Superador], backgroundColor: planBgColors }] },  
+                            options: { plugins: { legend: { labels: { color: chartTextColor } } } }  
+                        });  
+                    } else {  
+                        planChart.data.datasets[0].data = [planCount.Universal, planCount.Superador];  
+                        planChart.data.datasets[0].backgroundColor = planBgColors;  
+                        planChart.options.plugins.legend.labels.color = chartTextColor;  
+                        planChart.update();  
+                    }  
         
-                    // ============================================================
-                    // MAPA GENERAL
-                    // ============================================================
-                    const mapModal = document.getElementById('map-modal');
-                    const mapBtn = document.getElementById('map-btn');
-                    const closeMap = document.getElementById('close-map');
+                    // Gráfico 3: Top 5 Clasificaciones
+                    const clasificacionCount = {};  
+                    filteredData.forEach(provider => {  
+                        clasificacionCount[provider.Clasificacion] = (clasificacionCount[provider.Clasificacion] || 0) + 1;  
+                    });  
+                    const sortedClasif = Object.entries(clasificacionCount).sort((a, b) => b[1] - a[1]).slice(0, 5);  
+                    const clasifLabels = sortedClasif.map(([key]) => key);  
+                    const clasifData = sortedClasif.map(([, value]) => value);  
+                    const clasifBgColors = clasifLabels.map(() => isDark ? '#b85a5a' : '#8c4a4a');  
         
-                    mapBtn.onclick = function() {
-                        mapModal.style.display = 'block';
-                        setTimeout(() => {
-                            buildGeneralMapClustered();
-                            if (generalMap) generalMap.invalidateSize();
-                        }, 150);
-                    };
+                    if (!clasificacionChart) {  
+                        clasificacionChart = new Chart(document.getElementById('clasificacion-chart'), {  
+                            type: 'bar',  
+                            data: { labels: clasifLabels, datasets: [{ label: 'Top 5 Clasificaciones', data: clasifData, backgroundColor: clasifBgColors }] },  
+                            options: { scales: { y: { beginAtZero: true, ticks: { color: chartTextColor } }, x: { ticks: { color: chartTextColor } } }, plugins: { legend: { labels: { color: chartTextColor } } } }  
+                        });  
+                    } else {  
+                        clasificacionChart.data.labels = clasifLabels;  
+                        clasificacionChart.data.datasets[0].data = clasifData;  
+                        clasificacionChart.data.datasets[0].backgroundColor = clasifBgColors;  
+                        clasificacionChart.options.scales.y.ticks.color = chartTextColor;  
+                        clasificacionChart.options.scales.x.ticks.color = chartTextColor;  
+                        clasificacionChart.options.plugins.legend.labels.color = chartTextColor;  
+                        clasificacionChart.update();  
+                    }  
+                };  
         
-                    document.addEventListener('change', function(e) {
-                        if (e.target.id === 'map-mostrar-asociados' && generalMap) {
-                           updateMarkersOnlyClustered();
-                        }
-                    });
+                closeStats.onclick = function() {  
+                    statsModal.style.display = 'none';  
+                };  
         
-                    closeMap.onclick = function() {
-                        mapModal.style.display = 'none';
-                    };
+                // ============================================================
+                // 20. MAPA GENERAL - ABRE MODAL CON TODOS LOS PRESTADORES
+                // ============================================================
+                const mapModal = document.getElementById('map-modal');
+                const mapBtn = document.getElementById('map-btn');
+                const closeMap = document.getElementById('close-map');
         
-                    window.onclick = function(event) {  
-                        if (event.target == statsModal) statsModal.style.display = 'none';  
-                        if (event.target == mapModal) mapModal.style.display = 'none';  
-                    };  
+                mapBtn.onclick = function() {
+                    mapModal.style.display = 'block';
+                    setTimeout(() => {
+                        buildGeneralMapClustered();
+                        if (generalMap) generalMap.invalidateSize();
+                    }, 150);
+                };
         
-                    function updateClearAllButton() {  
-                        const hasFilters = $('#search-input').val() !== '';  
-                        $('#clear-all-btn').prop('disabled', !hasFilters);  
+                // Evento para cambiar filtro "Mostrar Prestadores Asociados" en el mapa
+                document.addEventListener('change', function(e) {
+                    if (e.target.id === 'map-mostrar-asociados' && generalMap) {
+                       updateMarkersOnlyClustered();
                     }
+                });
         
-                    updateEspecialidadOptions();
-                }  
-            });  
+                closeMap.onclick = function() {
+                    mapModal.style.display = 'none';
+                };
+        
+                // Cierra modales al hacer click fuera de ellos
+                window.onclick = function(event) {  
+                    if (event.target == statsModal) statsModal.style.display = 'none';  
+                    if (event.target == mapModal) mapModal.style.display = 'none';  
+                };  
+        
+                // ============================================================
+                // 21. ACTUALIZAR BOTÓN LIMPIAR BÚSQUEDA
+                // ============================================================
+                function updateClearAllButton() {  
+                    const hasFilters = $('#search-input').val() !== '';  
+                    $('#clear-all-btn').prop('disabled', !hasFilters);  
+                }
+        
+                // Inicializa las opciones de especialidad
+                updateEspecialidadOptions();
+            }  
+        });  
         });
         
-        // ==================== EmailJS ====================
+        // ============================================================
+        // 22. EMAILJS - FORMULARIO DE CONTACTO
+        // ============================================================
         const serviceID = 'service_bpql0t2';
         const templateID = 'template_pvy0uye';
         const publicKey = 'gGaNST8Xed0QDePFj';
         
         emailjs.init(publicKey);
         
+        // Envía email usando EmailJS
         function sendEmail(data) {
             const params = {
                 name: data.name,
@@ -1616,11 +1842,13 @@
             if (e.target === contactModal) closeModal();
         });
         
+        // Evento del formulario de contacto
         document.getElementById('contactForm').addEventListener('submit', function(e){
             e.preventDefault();
             const formData = new FormData(this);
             const dataObj = Object.fromEntries(formData.entries());
             sendEmail(dataObj);
         });
+        
     </script>
 </html>
