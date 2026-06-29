@@ -1188,7 +1188,7 @@
             let providersCompact = [], datosFiltrados = [];  
             let uniqueClasificaciones = new Set();  
         
-            Papa.parse("Data_geocoded.csv", {  
+            Papa.parse("data_geocoded.csv", {  
             download: true,  
             header: true,  
             delimiter: ";",  
@@ -1650,7 +1650,7 @@
                         } else {
                             // Muestra mensaje si no hay coordenadas
                             document.getElementById(mapId).innerHTML =
-                                "<div style='color:#b71c1c;padding:30px;text-align:center;'>Sin coordenadas (lat/lon) en Data_geocoded.csv.</div>";
+                                "<div style='color:#b71c1c;padding:30px;text-align:center;'>Sin coordenadas (lat/lon) en data_geocoded.csv.</div>";
                         }
                     }  
                 });
